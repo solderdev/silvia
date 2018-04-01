@@ -17,6 +17,7 @@ void setup() {
 
   setup_wifi();
   setup_sensors();
+  ssr_control_setup();
   if (pid_setup(20.0, 1.5, 5, 1000))
     Serial.println("error init pid");
   

@@ -7,6 +7,7 @@
 #define PID_TASK_STACKSIZE  500u  // words
 #define PID_TASK_PRIORITY   5     // idle is 0, main loop is 1, wifi is 2
 
+#define PID_MAX_TEMP  139  // deg-C
 
 static float kP = 0.0f;
 static float kI = 0.0f;
