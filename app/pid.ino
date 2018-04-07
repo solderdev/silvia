@@ -4,7 +4,7 @@
 #include "Arduino.h"
 
 
-#define PID_TASK_STACKSIZE  500u  // words
+#define PID_TASK_STACKSIZE  1000u  // words
 #define PID_TASK_PRIORITY   5     // idle is 0, main loop is 1, wifi is 2
 
 #define PID_MAX_TEMP  139  // deg-C
@@ -59,10 +59,11 @@ static void pid_timer_cb(TimerHandle_t pxTimer)
 
 void pid_task(void * pvParameters)
 {
+  xTimerStart(timer_update, portMAX_DELAY);
   while(1)
   {
     xSemaphoreTake(sem_update, portMAX_DELAY);
-    Serial.println("PID running at " + String(millis()));
+    //Serial.println("PID running at " + String(millis()));
   }
 }
 

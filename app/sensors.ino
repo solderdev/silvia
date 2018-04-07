@@ -58,7 +58,7 @@ void update_sensors(void)
     val_degc_boiler_top  = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BOILER_TOP, &adc_chars)) ) ) / (2 * -0.00433) + 30;
     val_degc_brewhead    = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BREWHEAD, &adc_chars)) ) ) / (2 * -0.00433) + 30;
 
-    Serial.println("Boiler side: " + String(val_degc_boiler_side) + "C / Boiler top " + String(val_degc_boiler_top) + "C / Brewhead " + String(val_degc_brewhead) + "C");
+    //Serial.println("Boiler side: " + String(val_degc_boiler_side) + "C / Boiler top " + String(val_degc_boiler_top) + "C / Brewhead " + String(val_degc_brewhead) + "C");
   }
 }
 
