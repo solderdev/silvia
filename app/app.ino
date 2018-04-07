@@ -20,7 +20,8 @@ void setup() {
   ssr_control_setup();
   if (pid_setup(20.0, 1.5, 5, 1000))
     Serial.println("error init pid");
-  
+  if (BTN_setup())
+    Serial.println("error init buttons");
   lastmilli = millis();
 }
 
@@ -29,6 +30,7 @@ void loop() {
   if (millis() - lastmilli > 500 )
   {
     lastmilli = millis();
+    Serial.println("");
 
 //    Serial.println(WiFi.RSSI());
   }
@@ -36,6 +38,11 @@ void loop() {
   update_sensors();
   service_server();
   service_display();
+
+  if (BTN_getDDcw())
+    Serial.println("CW");
+  if (BTN_getDDccw())
+    Serial.println("CCW");
 
   yield();
 }
