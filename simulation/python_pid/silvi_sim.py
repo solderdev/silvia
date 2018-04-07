@@ -22,13 +22,16 @@ class Boiler:
 
 
 class PID:
-    def __init__(self, kp, ki, kd, ts, u_min=0, u_max=1):
+    def __init__(self, kp, ki, kd, ts, u_min=0, u_max=1, pidtype='A'):
         self.Kp = kp
         self.Ki = ki
         self.Kd = kd
         self.ts = ts
         self.u_min = u_min
         self.u_max = u_max
+        self._pidtype = pidtype
+
+        print("init PID type", pidtype, "with P =", kp, ", I =", ki, ", D =", kd, "and Ts =", ts)
 
         self._a = kp + ki * ts + kd / ts
         if kd > 0:
@@ -43,25 +46,29 @@ class PID:
 
         self._t1 = -self.ts  # last time updated
 
-    def update(self, t, setpoint, pv, pidtype='A'):
+    def update(self, t, setpoint, pv):
         # check of we should update or wait
         if t >= self._t1 + self.ts:
             self._t1 = t
 
             e = setpoint - pv
             # calculate control value
-            if pidtype is 'A':
+            if self._pidtype is 'A':
                 e1 = setpoint - self._pv1
                 e2 = setpoint - self._pv2
                 u = self._u1 + self._a * e + self._b * e1 + self._c * e2
-            elif pidtype is 'B':
+            elif self._pidtype is 'B':
                 # u = self._u1 + self._a * e + self._b * self._e1 + self._c * self._e2
-                u = 0  # not implemented!
-            elif pidtype is 'C':
+                print("type B not implemented")
+                exit(-1)
+            elif self._pidtype is 'C':
                 u = self._u1 \
                     - self.Kp * (pv - self._pv1) \
                     + self.Ki * self.ts * e \
                     - (self.Kd / self.ts) * (pv - 2*self._pv1 + self._pv2)
+            else:
+                print("unknown PID type")
+                exit(-1)
 
             # check for saturation
             if u < self.u_min:
@@ -106,14 +113,15 @@ class Simulation:
             # apply old heater value
             self.sim_result_heater[idx] = self.sim_result_heater[idx-1]
 
-            mode = 'step'
-            mode = 'thermostat'
+            if 500 < t < 530:
+                self.boiler.t -= 0.05
+
+            # mode = 'step'
+            # mode = 'thermostat'
             mode = 'pid'
 
             if mode is 'step':
                 # enable heater in range X
-                # if 1 <= t < 8 or 15 <= t < 16 or 18 <= t < 19:
-                #     self.sim_result_on[idx] = 1
                 if 0 < t < 100: #or 950 < t < 1000:
                     self.sim_result_on[idx] = 1
 
@@ -128,7 +136,7 @@ class Simulation:
 
             elif mode is 'pid':
                 # PID calculation
-                heater_percent = self.pid.update(t, target_temp, self.boiler.t, 'C') / 100
+                heater_percent = self.pid.update(t, target_temp, self.boiler.t) / 100
                 # PWM modulation
                 pwm_steps_num_total = self.pid.ts / self.t_step
                 if heater_percent == 0:
@@ -186,18 +194,18 @@ class Simulation:
         # ax1.set(ylim=[0, 145])
         ax2.yaxis.set_ticks(np.arange(0, 100 + 1, 10))
 
-        # plt.axhline(95, color='r')
-        # plt.axvline(50, color='r')
         x_time = np.arange(0, self.t_sim, self.t_step)
-        ax1.plot(x_time, self.sim_result_t, 'k', label='Boiler temperature')
 
-        # y_heater_on = np.multiply(np.max(self.sim_result_t) - np.min(self.sim_result_t), self.sim_result_on)
-        # y_heater_on += np.min(self.sim_result_t)
+        # # y_heater_on = np.multiply(np.max(self.sim_result_t) - np.min(self.sim_result_t), self.sim_result_on)
+        # # y_heater_on += np.min(self.sim_result_t)
         # ax2.plot(x_time, self.sim_result_on * 100, 'b', label='Heater ON')
 
         # y_heater = np.multiply(np.max(self.sim_result_t) - np.min(self.sim_result_t), self.sim_result_heater)
         # y_heater += np.min(self.sim_result_t)
         ax2.plot(x_time, self.sim_result_heater * 100, 'r', label='Heater effective')
+
+        plt.axvline(100, color='g')
+        ax1.plot(x_time, self.sim_result_t, 'k', label='Boiler temperature')
 
         # ax1.legend()
         # ax2.legend()
@@ -211,7 +219,8 @@ my_heater = Heater(power=1000, dead_time=5)  # 1150
 # my_boiler = Boiler(volume=0.3, init_temp=90, newton_r=0.0000025, temp_env=23)  # **2 loss term
 my_boiler = Boiler(volume=0.3, init_temp=30, newton_r=0.00001, temp_env=23)
 # my_pid = PID(kp=25, ki=1.3, kd=5, ts=1, u_min=0, u_max=100)
-my_pid = PID(kp=25, ki=1, kd=10, ts=1, u_min=0, u_max=100)
+# my_pid = PID(kp=25, ki=1, kd=10, ts=1, u_min=0, u_max=100, pidtype='C')
+my_pid = PID(kp=30, ki=9, kd=50, ts=1, u_min=0, u_max=100, pidtype='C')
 # my_pid = PID(kp=.25, ki=0, kd=0, ts=1, u_min=0, u_max=100)
 sim = Simulation(run_time=1000, step_size=0.1, boiler=my_boiler, heater=my_heater, pid=my_pid)
 
