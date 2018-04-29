@@ -53,11 +53,17 @@ void SENSORS_update(void)
   {
     last_update = millis();
     
-    //Serial.println(String(sensorValue) + " mV  " + String(temp) + " degC");
-    val_degc_boiler_side = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BOILER_SIDE, &adc_chars)) ) ) / (2 * -0.00433) + 30;
-    val_degc_boiler_top  = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BOILER_TOP, &adc_chars)) ) ) / (2 * -0.00433) + 30;
-    val_degc_brewhead    = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BREWHEAD, &adc_chars)) ) ) / (2 * -0.00433) + 30;
+    uint32_t val_mV_boiler_side = adc1_to_voltage(PIN_BOILER_SIDE, &adc_chars);
+    uint32_t val_mV_boiler_top = adc1_to_voltage(PIN_BOILER_TOP, &adc_chars);
+    uint32_t val_mV_brewhead = adc1_to_voltage(PIN_BREWHEAD, &adc_chars);
+    
+    val_degc_boiler_side = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_boiler_side) ) ) / (2 * -0.00433) + 30;
+    val_degc_boiler_top  = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_boiler_top) ) ) / (2 * -0.00433) + 30;
+    val_degc_brewhead    = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_brewhead) ) ) / (2 * -0.00433) + 30;
 
+//    Serial.println("Boiler side: " + String(val_mV_boiler_side) + "mV / Boiler top " + String(val_mV_boiler_top) + "mV / Brewhead " + String(val_mV_brewhead) + "mV");
+//    Serial.println("Boiler side: " + String(val_degc_boiler_side) + "C / Boiler top " + String(val_degc_boiler_top) + "C / Brewhead " + String(val_degc_brewhead) + "C");
+                   
     // make sure values are in plausible ranges
     if (val_degc_boiler_side < 10 || val_degc_boiler_side > 150)
       val_degc_boiler_side = 999;
@@ -65,8 +71,6 @@ void SENSORS_update(void)
       val_degc_boiler_top = 999;
     if (val_degc_brewhead < 10 || val_degc_brewhead > 150)
       val_degc_brewhead = 999;
-      
-    //Serial.println("Boiler side: " + String(val_degc_boiler_side) + "C / Boiler top " + String(val_degc_boiler_top) + "C / Brewhead " + String(val_degc_brewhead) + "C");
   }
 }
 
