@@ -2,9 +2,9 @@
 #include "freertos/timers.h"
 
 
-#define PIN_SSR_PUMP    26  // TODO - check
-#define PIN_SSR_HEATER  27  // TODO - check
-#define PIN_SSR_VALVE   33  // TODO - check
+#define PIN_SSR_PUMP    27
+#define PIN_SSR_HEATER  26
+#define PIN_SSR_VALVE   33
 
 #define HEATER_MAX_ON_SEC  50u   // [s]
 #define HEATER_COOL_SEC    100u  // [s]
@@ -63,11 +63,14 @@ uint8_t SSRCTRL_setup(void)
   pump_ctrl.timer_pwm = xTimerCreate("tmr_ssr_p", pdMS_TO_TICKS(20), pdTRUE, NULL, pump_timer_cb);
   if (heater_ctrl.timer_pwm == NULL || pump_ctrl.timer_pwm == NULL)
     return 1; // error
+  xTimerStart(heater_ctrl.timer_pwm, portMAX_DELAY);
+  xTimerStart(pump_ctrl.timer_pwm, portMAX_DELAY);
 
   // init safety timer
   timer_safety = xTimerCreate("tmr_safety", pdMS_TO_TICKS(997), pdTRUE, NULL, safety_timer_cb);
   if (timer_safety == NULL)
     return 1; // error
+  //xTimerStart(timer_safety, portMAX_DELAY);
 
   return 0;
 }
@@ -118,7 +121,8 @@ static void safety_timer_cb(TimerHandle_t pxTimer)
   // gets re-enabled above after HEATER_COOL_SEC
   if (SENSORS_get_temp_boiler_side() > PID_MAX_TEMP || SENSORS_get_temp_boiler_top() > PID_MAX_TEMP)
   {
-    Serial.println("SSRctrl: boiler too hot!");
+    Serial.println("SSRctrl: boiler too hot! Side: " + String(SENSORS_get_temp_boiler_side()) + 
+                   " Top: " + String(SENSORS_get_temp_boiler_top()));
     SSR_HEATER_OFF();
   }
 
@@ -200,11 +204,29 @@ void SSRCTRL_off(void)
 
 void SSRCTRL_set_pwm_heater(uint8_t percent)
 {
+  if (percent == 100)
+    SSR_HEATER_ON();
+  else
+    SSR_HEATER_OFF();
+    
   // TODO
 }
 
 void SSRCTRL_set_pwm_pump(uint8_t percent)
 {
+  if (percent == 100)
+    SSR_PUMP_ON();
+  else
+    SSR_PUMP_OFF();
+    
   // TODO
+}
+
+void SSRCTRL_set_state_valve(bool enable)
+{
+  if (enable)
+    SSR_VALVE_ON();
+  else
+    SSR_VALVE_OFF();
 }
 
