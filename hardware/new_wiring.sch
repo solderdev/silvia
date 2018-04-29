@@ -9234,8 +9234,8 @@ wt: signal 3</text>
 <text x="248.92" y="2.54" size="1.27" layer="91">21</text>
 <text x="355.6" y="-5.08" size="1.778" layer="94">I2C pull-ups are integrated in display</text>
 <text x="248.92" y="35.56" size="1.27" layer="91">33</text>
-<text x="246.38" y="40.64" size="1.27" layer="91">26</text>
-<text x="246.38" y="38.1" size="1.27" layer="91">27</text>
+<text x="248.92" y="38.1" size="1.27" layer="91">26</text>
+<text x="248.92" y="40.64" size="1.27" layer="91">27</text>
 <text x="228.6" y="0" size="1.27" layer="91" rot="R180">25</text>
 <text x="81.28" y="27.94" size="1.778" layer="94" rot="MR180">3v3:
 
@@ -9264,7 +9264,6 @@ wt: signal 3</text>
 <text x="403.86" y="101.6" size="1.778" layer="91">maybe supply 
 valve SSR with less V</text>
 <text x="228.6" y="15.24" size="1.27" layer="91" rot="R180">23</text>
-<text x="248.92" y="38.1" size="2.54" layer="91">?</text>
 <text x="228.6" y="40.64" size="1.27" layer="91" rot="R180">17</text>
 <text x="228.6" y="38.1" size="1.27" layer="91" rot="R180">16</text>
 <text x="228.6" y="35.56" size="1.27" layer="91" rot="R180">4</text>
