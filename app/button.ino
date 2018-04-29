@@ -15,10 +15,13 @@
 #define PIN_SWITCH_WATER   16
 #define PIN_SWITCH_STEAM    4
 
-#define ROT_DD_1   ((digitalRead(PIN_DD_DT))?1:0)
-#define ROT_DD_2   ((digitalRead(PIN_DD_CLK))?1:0)
-#define ROT_DD_BTN ((digitalRead(PIN_DD_BUTTON))?1:0)
-#define BTN_POWER  ((digitalRead(PIN_POWER_BUTTON))?0:1)
+#define ROT_DD_1       ((digitalRead(PIN_DD_DT))?1:0)
+#define ROT_DD_2       ((digitalRead(PIN_DD_CLK))?1:0)
+#define ROT_DD_BTN     ((digitalRead(PIN_DD_BUTTON))?1:0)
+#define BTN_POWER      ((digitalRead(PIN_POWER_BUTTON))?0:1)
+#define SWITCH_COFFEE  ((digitalRead(PIN_SWITCH_COFFEE))?0:1)
+#define SWITCH_WATER   ((digitalRead(PIN_SWITCH_WATER))?0:1)
+#define SWITCH_STEAM   ((digitalRead(PIN_SWITCH_STEAM))?0:1)
 
 
 static TimerHandle_t timer_debounce_dd = NULL;
@@ -27,7 +30,11 @@ static TimerHandle_t timer_debounce_btn = NULL;
 static uint8_t cw_count = 0;
 static uint8_t ccw_count = 0;
 
-static uint8_t btn_power_count = 0;  // limited to max. 1
+static int8_t btn_dd_debounce = 0;
+static int8_t btn_power_debounce = 0;
+static int8_t sw_coffee_debounce = 0;
+static int8_t sw_water_debounce = 0;
+static int8_t sw_steam_debounce = 0;
 
 
 static void dd_timer_cb(TimerHandle_t pxTimer);
@@ -58,7 +65,6 @@ uint8_t BTN_setup(void)
 
   cw_count = 0;
   ccw_count = 0;
-  btn_power_count = 0;
   
   return 0;
 }
@@ -87,6 +93,46 @@ boolean BTN_getDDccw(void)
   else
     retval = false;
   return retval;
+}
+
+boolean BTN_getButtonStateDD(void)
+{
+  if (btn_dd_debounce == DEBOUNCE_COUNT_BTN)
+    return true;
+  else
+    return false;
+}
+
+boolean BTN_getButtonStatePower(void)
+{
+  if (btn_power_debounce == DEBOUNCE_COUNT_BTN)
+    return true;
+  else
+    return false;
+}
+
+boolean BTN_getSwitchStateCoffee(void)
+{
+  if (sw_coffee_debounce == DEBOUNCE_COUNT_BTN)
+    return true;
+  else
+    return false;
+}
+
+boolean BTN_getSwitchStateWater(void)
+{
+  if (sw_water_debounce == DEBOUNCE_COUNT_BTN)
+    return true;
+  else
+    return false;
+}
+
+boolean BTN_getSwitchStateSteam(void)
+{
+  if (sw_steam_debounce == DEBOUNCE_COUNT_BTN)
+    return true;
+  else
+    return false;
 }
 
 static void dd_timer_cb(TimerHandle_t pxTimer)
@@ -141,8 +187,30 @@ static void btn_timer_cb(TimerHandle_t pxTimer)
 {
   (void)pxTimer;
 
-  // TODO
-
-  if (btn_power_count > 1)
-    btn_power_count = 1;
+  // get pin states
+  // increase counter up to DEBOUNCE_COUNT_DD if pin is asserted
+  if (ROT_DD_BTN)
+    btn_dd_debounce = (btn_dd_debounce + 1 > DEBOUNCE_COUNT_BTN) ? DEBOUNCE_COUNT_BTN : btn_dd_debounce + 1;
+  else
+    btn_dd_debounce = 0;
+    
+  if (BTN_POWER)
+    btn_power_debounce = (btn_power_debounce + 1 > DEBOUNCE_COUNT_BTN) ? DEBOUNCE_COUNT_BTN : btn_power_debounce + 1;
+  else
+    btn_power_debounce = 0;
+    
+  if (SWITCH_COFFEE)
+    sw_coffee_debounce = (sw_coffee_debounce + 1 > DEBOUNCE_COUNT_BTN) ? DEBOUNCE_COUNT_BTN : sw_coffee_debounce + 1;
+  else
+    sw_coffee_debounce = 0;
+    
+  if (SWITCH_WATER)
+    sw_water_debounce = (sw_water_debounce + 1 > DEBOUNCE_COUNT_BTN) ? DEBOUNCE_COUNT_BTN : sw_water_debounce + 1;
+  else
+    sw_water_debounce = 0;
+    
+  if (SWITCH_STEAM)
+    sw_steam_debounce = (sw_steam_debounce + 1 > DEBOUNCE_COUNT_BTN) ? DEBOUNCE_COUNT_BTN : sw_steam_debounce + 1;
+  else
+    sw_steam_debounce = 0;
 }
