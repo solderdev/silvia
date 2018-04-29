@@ -3,46 +3,52 @@
  * flash freq: 80MHz
  * upload speed: 921600 b
  */
-#include <WiFi.h>
 #include "private_defines.h"
 
 //int LED_BUILTIN = 2;
+#define PIN_LED_GREEN  25
+#define LED_ON     digitalWrite(PIN_LED_GREEN, HIGH)
+#define LED_OFF    digitalWrite(PIN_LED_GREEN, LOW)
+
 
 uint32_t lastmilli = 0;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(PIN_LED_GREEN, OUTPUT);
   Serial.begin(115200);
   delay(100);
 
-  setup_wifi();
-  setup_sensors();
-  ssr_control_setup();
-  if (pid_setup(20.0, 1.5, 5, 1000))
+  WIFI_setup();
+  SENSORS_setup();
+  SSRCTRL_setup();
+  if (PID_setup(20.0, 1.5, 5, 1000))
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
+  //DISPLAY_setup();
+  PID_start();
+  
   lastmilli = millis();
 }
 
-void loop() {
-
+void loop()
+{
   if (millis() - lastmilli > 500 )
   {
     lastmilli = millis();
     Serial.println("");
-
 //    Serial.println(WiFi.RSSI());
   }
   
-  update_sensors();
-  service_server();
-  service_display();
+  SENSORS_update();
+  WIFI_service();
+  //DISPLAY_service();
 
-  if (BTN_getDDcw())
-    Serial.println("CW");
-  if (BTN_getDDccw())
-    Serial.println("CCW");
+//  if (BTN_getDDcw())
+//    Serial.println("CW");
+//  if (BTN_getDDccw())
+//    Serial.println("CCW");
 
   yield();
 }

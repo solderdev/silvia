@@ -14,7 +14,6 @@ static float kI = 0.0f;
 static float kD = 0.0f;
 static uint32_t ts = 0;  // [ms]
 static SemaphoreHandle_t sem_update = NULL;
-//static StaticSemaphore_t sem_update_buffer;
 static TimerHandle_t timer_update = NULL;
 static TaskHandle_t task_handle = NULL;
 
@@ -23,7 +22,7 @@ static void pid_timer_cb(TimerHandle_t pxTimer);
 static void pid_task(void * pvParameters);
 
 
-uint8_t pid_setup(float p, float i, float d, uint32_t ts_ms)
+uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
 {
   // P, I and D parameters
   kP = p;
@@ -34,7 +33,6 @@ uint8_t pid_setup(float p, float i, float d, uint32_t ts_ms)
   ts = ts_ms;
 
   // sync semaphore
-//  sem_update = xSemaphoreCreateBinaryStatic(&sem_update_buffer);
   sem_update = xSemaphoreCreateBinary();
   if (sem_update == NULL)
     return 1; // error
@@ -51,19 +49,40 @@ uint8_t pid_setup(float p, float i, float d, uint32_t ts_ms)
   return 0;
 }
 
+void PID_start(void)
+{
+  if (timer_update != NULL)
+    xTimerStart(timer_update, portMAX_DELAY);
+}
+
+void PID_stop(void)
+{
+  if (timer_update != NULL)
+    xTimerStop(timer_update, portMAX_DELAY);
+}
+
 static void pid_timer_cb(TimerHandle_t pxTimer)
 {
   (void)pxTimer;
   xSemaphoreGive(sem_update);
 }
 
-void pid_task(void * pvParameters)
+static void pid_task(void * pvParameters)
 {
-  xTimerStart(timer_update, portMAX_DELAY);
+  float temp = 0.0f;
+  
   while(1)
   {
     xSemaphoreTake(sem_update, portMAX_DELAY);
     //Serial.println("PID running at " + String(millis()));
+
+    temp = SENSORS_get_temp_boiler_side();
+
+
+
+
+
+    
   }
 }
 

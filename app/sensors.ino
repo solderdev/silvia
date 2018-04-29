@@ -4,9 +4,9 @@
 
 #define ADC_VREF_MEASURED  1141 // mV
 
-#define PIN_BOILER_SIDE ADC1_CHANNEL_0
-#define PIN_BOILER_TOP  ADC1_CHANNEL_1
-#define PIN_BREWHEAD    ADC1_CHANNEL_2
+#define PIN_BOILER_SIDE  ADC1_CHANNEL_6
+#define PIN_BOILER_TOP   ADC1_CHANNEL_0
+#define PIN_BREWHEAD     ADC1_CHANNEL_3
 
 #define UPDATE_INTERVAL 1000  // [ms]
 
@@ -17,7 +17,7 @@ float val_degc_boiler_top = 0.0f;
 float val_degc_brewhead = 0.0f;
 
 
-void setup_sensors(void)
+void SENSORS_setup(void)
 {
   // https://www.esp32.com/viewtopic.php?f=19&t=2881&start=20#p16166
   // https://esp-idf.readthedocs.io/en/latest/api-reference/peripherals/adc.html#adc-calibration
@@ -45,7 +45,7 @@ void setup_sensors(void)
   Serial.println("ADC bit_width " + String(adc_chars.bit_width));
 }
 
-void update_sensors(void)
+void SENSORS_update(void)
 {
   static uint32_t last_update = 0;
 
@@ -58,21 +58,29 @@ void update_sensors(void)
     val_degc_boiler_top  = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BOILER_TOP, &adc_chars)) ) ) / (2 * -0.00433) + 30;
     val_degc_brewhead    = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - adc1_to_voltage(PIN_BREWHEAD, &adc_chars)) ) ) / (2 * -0.00433) + 30;
 
+    // make sure values are in plausible ranges
+    if (val_degc_boiler_side < 10 || val_degc_boiler_side > 150)
+      val_degc_boiler_side = 999;
+    if (val_degc_boiler_top < 10 || val_degc_boiler_top > 150)
+      val_degc_boiler_top = 999;
+    if (val_degc_brewhead < 10 || val_degc_brewhead > 150)
+      val_degc_brewhead = 999;
+      
     //Serial.println("Boiler side: " + String(val_degc_boiler_side) + "C / Boiler top " + String(val_degc_boiler_top) + "C / Brewhead " + String(val_degc_brewhead) + "C");
   }
 }
 
-float get_sensor_boiler_side(void)
+float SENSORS_get_temp_boiler_side(void)
 {
   return val_degc_boiler_side;
 }
 
-float get_sensor_boiler_top(void)
+float SENSORS_get_temp_boiler_top(void)
 {
   return val_degc_boiler_top;
 }
 
-float get_sensor_brewhead(void)
+float SENSORS_get_temp_brewhead(void)
 {
   return val_degc_brewhead;
 }
