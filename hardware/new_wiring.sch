@@ -9064,12 +9064,12 @@ Siemens, Hewlett-Packard, Texas Instuments, Sharp, Motorola&lt;p&gt;
 <part name="GND7" library="supply1" deviceset="GND" device=""/>
 <part name="GND8" library="supply1" deviceset="GND" device=""/>
 <part name="GND9" library="supply1" deviceset="GND" device=""/>
-<part name="R3" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W (?)"/>
+<part name="R3" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W"/>
 <part name="C1" library="rcl" deviceset="C-EU" device="025-024X044" value="100n, 1kV"/>
 <part name="C2" library="rcl" deviceset="C-EU" device="025-024X044" value="100n, 1kV"/>
 <part name="C3" library="rcl" deviceset="C-EU" device="025-024X044" value="100n, 1kV"/>
-<part name="R4" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W (?)"/>
-<part name="R5" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W (?)"/>
+<part name="R4" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W"/>
+<part name="R5" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W"/>
 <part name="C4" library="rcl" deviceset="C-EU" device="025-024X044" value="3n3"/>
 <part name="C5" library="rcl" deviceset="C-EU" device="025-024X044" value="3n3"/>
 <part name="C6" library="rcl" deviceset="C-EU" device="025-024X044" value="3n3"/>
@@ -9130,6 +9130,10 @@ Siemens, Hewlett-Packard, Texas Instuments, Sharp, Motorola&lt;p&gt;
 <part name="GND26" library="supply1" deviceset="GND" device=""/>
 <part name="R17" library="rcl" deviceset="R-EU_" device="0613/5V" value="1k8 72mW"/>
 <part name="+3V1" library="supply1" deviceset="+3V3" device=""/>
+<part name="R15" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W"/>
+<part name="C13" library="rcl" deviceset="C-EU" device="025-024X044" value="100n, 1kV"/>
+<part name="R16" library="rcl" deviceset="R-EU_" device="0613/5V" value="220, 1/4W"/>
+<part name="C14" library="rcl" deviceset="C-EU" device="025-024X044" value="100n, 1kV"/>
 </parts>
 <sheets>
 <sheet>
@@ -9379,6 +9383,10 @@ valve SSR with less V</text>
 <instance part="GND26" gate="1" x="271.78" y="-22.86"/>
 <instance part="R17" gate="G$1" x="388.62" y="111.76"/>
 <instance part="+3V1" gate="G$1" x="205.74" y="30.48"/>
+<instance part="R15" gate="G$1" x="449.58" y="132.08"/>
+<instance part="C13" gate="G$1" x="447.04" y="137.16" rot="R90"/>
+<instance part="R16" gate="G$1" x="449.58" y="111.76"/>
+<instance part="C14" gate="G$1" x="447.04" y="116.84" rot="R90"/>
 </instances>
 <busses>
 </busses>
@@ -9508,6 +9516,9 @@ valve SSR with less V</text>
 <wire x1="426.72" y1="198.12" x2="426.72" y2="137.16" width="0.1524" layer="91"/>
 <pinref part="SSR2_PUMP" gate="1" pin="DS1"/>
 <wire x1="426.72" y1="137.16" x2="421.64" y2="137.16" width="0.1524" layer="91"/>
+<pinref part="C13" gate="G$1" pin="1"/>
+<wire x1="426.72" y1="137.16" x2="444.5" y2="137.16" width="0.1524" layer="91"/>
+<junction x="426.72" y="137.16"/>
 </segment>
 </net>
 <net name="GND" class="0">
@@ -10050,6 +10061,11 @@ valve SSR with less V</text>
 <junction x="436.88" y="132.08"/>
 <pinref part="SSR3_VALVE" gate="1" pin="DS2"/>
 <wire x1="436.88" y1="111.76" x2="421.64" y2="111.76" width="0.1524" layer="91"/>
+<pinref part="R15" gate="G$1" pin="1"/>
+<wire x1="436.88" y1="132.08" x2="444.5" y2="132.08" width="0.1524" layer="91"/>
+<pinref part="R16" gate="G$1" pin="1"/>
+<wire x1="436.88" y1="111.76" x2="444.5" y2="111.76" width="0.1524" layer="91"/>
+<junction x="436.88" y="111.76"/>
 </segment>
 </net>
 <net name="N$14" class="0">
@@ -10187,6 +10203,9 @@ valve SSR with less V</text>
 <wire x1="424.18" y1="180.34" x2="424.18" y2="116.84" width="0.1524" layer="91"/>
 <pinref part="SSR3_VALVE" gate="1" pin="DS1"/>
 <wire x1="424.18" y1="116.84" x2="421.64" y2="116.84" width="0.1524" layer="91"/>
+<pinref part="C14" gate="G$1" pin="1"/>
+<wire x1="424.18" y1="116.84" x2="444.5" y2="116.84" width="0.1524" layer="91"/>
+<junction x="424.18" y="116.84"/>
 </segment>
 </net>
 <net name="N$30" class="0">
@@ -10194,6 +10213,24 @@ valve SSR with less V</text>
 <pinref part="R17" gate="G$1" pin="2"/>
 <pinref part="SSR3_VALVE" gate="1" pin="K"/>
 <wire x1="393.7" y1="111.76" x2="401.32" y2="111.76" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$31" class="0">
+<segment>
+<pinref part="C13" gate="G$1" pin="2"/>
+<wire x1="452.12" y1="137.16" x2="457.2" y2="137.16" width="0.1524" layer="91"/>
+<wire x1="457.2" y1="137.16" x2="457.2" y2="132.08" width="0.1524" layer="91"/>
+<pinref part="R15" gate="G$1" pin="2"/>
+<wire x1="457.2" y1="132.08" x2="454.66" y2="132.08" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$32" class="0">
+<segment>
+<pinref part="C14" gate="G$1" pin="2"/>
+<wire x1="452.12" y1="116.84" x2="457.2" y2="116.84" width="0.1524" layer="91"/>
+<wire x1="457.2" y1="116.84" x2="457.2" y2="111.76" width="0.1524" layer="91"/>
+<pinref part="R16" gate="G$1" pin="2"/>
+<wire x1="457.2" y1="111.76" x2="454.66" y2="111.76" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
