@@ -16,6 +16,7 @@ uint32_t lastmilli = 0;
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIN_LED_GREEN, OUTPUT);
+  digitalWrite(PIN_LED_GREEN, HIGH);
   Serial.begin(115200);
   delay(100);
 
@@ -27,21 +28,121 @@ void setup() {
   if (BTN_setup())
     Serial.println("error init buttons");
   //DISPLAY_setup();
-  PID_start();
+  PID_stop();
+  SSRCTRL_off();
   
   lastmilli = millis();
 }
 
 void loop()
 {
+//  static int percent_p_test = 0;
+  static uint8_t led_state = 1;
+  static uint8_t power_state = 0, power_trigger_available = 1;
+  
   if (millis() - lastmilli > 500 )
   {
     lastmilli = millis();
-    Serial.println("");
+//    Serial.println(String("Btn PWR: ") + String(BTN_getButtonStatePower()) + 
+//                   String(" Sw Coffee: ") + String(BTN_getSwitchStateCoffee()) + 
+//                   String(" Sw Water: ") + String(BTN_getSwitchStateWater()) + 
+//                   String(" Sw Steam: ") + String(BTN_getSwitchStateSteam()));
 //    Serial.println(WiFi.RSSI());
-  }
+    Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
+                   "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
+                   "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / " +
+                   "Power " + String(power_state));
   
-  SENSORS_update();
+    if (SSRCTRL_getState() == false)
+    {
+      digitalWrite(PIN_LED_GREEN, LOW);
+      led_state = 0;
+    }
+    else if (SENSORS_get_temp_boiler_side() < 96.0f)
+    {
+      if (led_state)
+        digitalWrite(PIN_LED_GREEN, HIGH);
+      else
+        digitalWrite(PIN_LED_GREEN, LOW);
+      led_state = !led_state;
+    }
+    else
+    {
+      digitalWrite(PIN_LED_GREEN, HIGH);
+      led_state = 1;
+    }
+    
+//    percent_p_test += 10;
+//    if (percent_p_test > 110)
+//      percent_p_test = 0;
+  }
+
+  if (BTN_getButtonStatePower() == true && power_trigger_available)
+  {
+    power_trigger_available = 0;
+    
+    if (power_state)
+    {
+      Serial.println("powering DOWN!");
+      power_state = 0;
+      PID_stop();
+      SSRCTRL_off();
+    }
+    else
+    {
+      Serial.println("powering UP!");
+      power_state = 1;
+      PID_start();
+      SSRCTRL_on();
+    }
+  }
+  else if (BTN_getButtonStatePower() == false)
+    power_trigger_available = 1;
+
+  PID_setTargetTemp(97.0f);
+
+  if (BTN_getSwitchStateCoffee() == true && BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
+  {
+    SSRCTRL_set_state_valve(true);
+    SSRCTRL_set_pwm_pump(100);
+  }
+  else if (BTN_getSwitchStateCoffee() == true && BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == true)
+  {
+    SSRCTRL_set_state_valve(true);
+    SSRCTRL_set_pwm_pump(10);
+  }
+  else if (BTN_getSwitchStateCoffee() == false && BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
+  {
+    SSRCTRL_set_state_valve(false);
+    SSRCTRL_set_pwm_pump(50);
+  }
+  else if (BTN_getSwitchStateCoffee() == false && BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == true)
+  {
+    SSRCTRL_set_state_valve(false);
+    SSRCTRL_set_pwm_pump(10);
+  }
+  else
+  {
+    SSRCTRL_set_state_valve(false);
+    SSRCTRL_set_pwm_pump(0);
+  }
+    
+
+//  if (BTN_getSwitchStateCoffee())
+//    SSRCTRL_set_state_valve(true);
+//  else
+//    SSRCTRL_set_state_valve(false);
+//    
+//  if (BTN_getSwitchStateWater())
+//    SSRCTRL_set_pwm_pump(percent_p_test);
+//  else
+//    SSRCTRL_set_pwm_pump(0);
+//    
+//  if (BTN_getSwitchStateSteam())
+//    SSRCTRL_set_pwm_heater(100);
+//  else
+//    SSRCTRL_set_pwm_heater(0);
+  
   WIFI_service();
   //DISPLAY_service();
 
