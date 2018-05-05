@@ -52,6 +52,7 @@ static SSR_Control_t heater_ctrl;
 static SSR_Control_t pump_ctrl;
 static SSR_Control_t valve_ctrl;
 static PWM_Pump_t pwm_percent_pump = PWM_PUMP_0_PERCENT;
+static uint8_t pwm_percent_heater[10] = {0};
 
 
 static void heater_timer_cb(TimerHandle_t pxTimer);
@@ -68,8 +69,11 @@ uint8_t SSRCTRL_setup(void)
   memset(&heater_ctrl, 0, sizeof(heater_ctrl));
   memset(&pump_ctrl, 0, sizeof(pump_ctrl));
   memset(&valve_ctrl, 0, sizeof(valve_ctrl));
+  
+  pwm_percent_pump = PWM_PUMP_0_PERCENT;
+  memset(pwm_percent_heater, 0, sizeof(pwm_percent_heater));
 
-  SSRCTRL_on();
+  SSRCTRL_off();
   
   // init PWM control timer
   // heater: 50Hz -> whole sine: 20ms, half sine: 10ms
@@ -85,18 +89,26 @@ uint8_t SSRCTRL_setup(void)
   timer_safety = xTimerCreate("tmr_safety", pdMS_TO_TICKS(997), pdTRUE, NULL, safety_timer_cb);
   if (timer_safety == NULL)
     return 1; // error
-  //xTimerStart(timer_safety, portMAX_DELAY);
+  xTimerStart(timer_safety, portMAX_DELAY);
 
   return 0;
 }
 
 static void heater_timer_cb(TimerHandle_t pxTimer)
 {
+  static uint32_t period_counter = 0;  // 0 to 99 elapsed periods
   (void)pxTimer;
+  
   if (enabled != true)
     return;
-
-  // TODO
+  
+  if (pwm_percent_heater[period_counter/10] > period_counter - period_counter/10)
+    SSR_HEATER_ON();
+  else
+    SSR_HEATER_OFF();
+  
+  if (++period_counter >= 100)
+    period_counter = 0;
 }
 
 static void pump_timer_cb(TimerHandle_t pxTimer)
@@ -285,6 +297,7 @@ void SSRCTRL_on(void)
   valve_ctrl.target_state = SSR_OFF;
   
   enabled = true;
+  Serial.println("SSR ctrl ON!");
 }
 
 void SSRCTRL_off(void)
@@ -303,16 +316,47 @@ void SSRCTRL_off(void)
   valve_ctrl.target_state = SSR_OFF;
 
   enabled = false;
+  Serial.println("SSR ctrl OFF!");
+}
+
+bool SSRCTRL_getState(void)
+{
+  return enabled;
 }
 
 void SSRCTRL_set_pwm_heater(uint8_t percent)
 {
-  if (percent == 100)
-    SSR_HEATER_ON();
-  else
-    SSR_HEATER_OFF();
+  // if (percent == 100)
+    // SSR_HEATER_ON();
+  // else
+    // SSR_HEATER_OFF();
     
-  // TODO
+  if (percent > 100)
+  {
+    percent = 0;
+    Serial.println("SSRctrl: heater percent > 100!");
+  }
+  
+  if (percent == 100)
+  {
+    memset(pwm_percent_heater, 0xFF, sizeof(pwm_percent_heater));  // set array
+  }
+  else
+  {
+    memset(pwm_percent_heater, 0, sizeof(pwm_percent_heater));  // reset array
+    
+    // fill array in each 10-percent field (tens) with 1s according to number of every 10%
+    uint8_t max_ones = percent/10;
+    for (uint8_t tens = 0; tens < 10; tens++)
+    {
+      for (uint8_t ones = 0; ones < max_ones; ones++)
+        pwm_percent_heater[tens] += 1;
+    }
+    // now handle remaining 0% to 9% on the first digit of the overall percent value
+    uint8_t max_tens = percent - (percent/10) * 10;
+    for (uint8_t tens = 0; tens < max_tens; tens++)
+      pwm_percent_heater[tens] += 1;
+  }
 }
 
 void SSRCTRL_set_pwm_pump(uint8_t percent)
