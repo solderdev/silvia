@@ -4,18 +4,20 @@
 #include "Arduino.h"
 
 
-#define PID_TASK_STACKSIZE  1000u  // words
-#define PID_TASK_PRIORITY   5     // idle is 0, main loop is 1, wifi is 2
+#define PID_TASK_STACKSIZE  1000u  // [words]
+#define PID_TASK_PRIORITY   5      // idle: 0, main-loop: 1, wifi: 2, pid: 5, sensors: 4
 
-#define PID_MAX_TEMP  139  // deg-C
+#define PID_MIN_TEMP   10.0f  // [deg-C] minimum allowed temperature
+#define PID_MAX_TEMP  139.0f  // [deg-C] maximum allowed temperature
 
 static float kP = 0.0f;
 static float kI = 0.0f;
 static float kD = 0.0f;
-static uint32_t ts = 0;  // [ms]
-static SemaphoreHandle_t sem_update = NULL;
-static TimerHandle_t timer_update = NULL;
-static TaskHandle_t task_handle = NULL;
+static uint32_t ts = 0;  // [ms] update interval
+static float target_temp = 0.0f;  // [deg-C] target boiler temperature
+static SemaphoreHandle_t pid_sem_update = NULL;
+static TimerHandle_t pid_timer_update = NULL;
+static TaskHandle_t pid_task_handle = NULL;
 
 
 static void pid_timer_cb(TimerHandle_t pxTimer);
@@ -32,18 +34,20 @@ uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
   // sampling time
   ts = ts_ms;
 
+  target_temp = PID_MIN_TEMP;
+
   // sync semaphore
-  sem_update = xSemaphoreCreateBinary();
-  if (sem_update == NULL)
+  pid_sem_update = xSemaphoreCreateBinary();
+  if (pid_sem_update == NULL)
     return 1; // error
 
-  // update timer
-  timer_update = xTimerCreate("tmr_pid", pdMS_TO_TICKS(ts_ms), pdTRUE, NULL, pid_timer_cb);
-  if (timer_update == NULL)
+  // update timer - start must be called separately
+  pid_timer_update = xTimerCreate("tmr_pid", pdMS_TO_TICKS(ts_ms), pdTRUE, NULL, pid_timer_cb);
+  if (pid_timer_update == NULL)
     return 1; // error
 
   // create task
-  if (xTaskCreate(pid_task, "task_pid", PID_TASK_STACKSIZE, NULL, 5, &task_handle) != pdPASS)
+  if (xTaskCreate(pid_task, "task_pid", PID_TASK_STACKSIZE, NULL, 5, &pid_task_handle) != pdPASS)
     return 1; // error
 
   return 0;
@@ -51,51 +55,51 @@ uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
 
 void PID_start(void)
 {
-  if (timer_update != NULL)
-    xTimerStart(timer_update, portMAX_DELAY);
+  if (pid_timer_update != NULL)
+    xTimerStart(pid_timer_update, portMAX_DELAY);
+  Serial.println("PID controller ON!");
 }
 
 void PID_stop(void)
 {
-  if (timer_update != NULL)
-    xTimerStop(timer_update, portMAX_DELAY);
+  if (pid_timer_update != NULL)
+    xTimerStop(pid_timer_update, portMAX_DELAY);
+  Serial.println("PID controller OFF!");
+}
+
+void PID_setTargetTemp(float temp)
+{
+  if (temp > PID_MIN_TEMP && temp < PID_MAX_TEMP)
+    target_temp = temp;
+  else
+    target_temp = PID_MIN_TEMP;
 }
 
 static void pid_timer_cb(TimerHandle_t pxTimer)
 {
   (void)pxTimer;
-  xSemaphoreGive(sem_update);
+  xSemaphoreGive(pid_sem_update);
 }
 
 static void pid_task(void * pvParameters)
 {
-  float temp = 0.0f;
+  (void)pvParameters;
   
   while(1)
   {
-    xSemaphoreTake(sem_update, portMAX_DELAY);
-    //Serial.println("PID running at " + String(millis()));
+    float temp = 0.0f;
+    xSemaphoreTake(pid_sem_update, portMAX_DELAY);
+    // Serial.println("PID running at " + String(millis()));
 
     temp = SENSORS_get_temp_boiler_side();
 
+    // TODO
 
+    if (temp >= target_temp)
+      SSRCTRL_set_pwm_heater(0);
 
-
-
-    
+    if (temp < target_temp)
+      SSRCTRL_set_pwm_heater(100);
   }
 }
-
-//void service_pid(void)
-//{
-//  static uint32_t last_update = 0;
-//  uint32_t now = millis();
-//  
-//  if (ts != 0 && now - last_update > ts)
-//  {
-//    last_update = now;
-//
-//    // TODO
-//  }
-//}
 
