@@ -53,6 +53,7 @@ static SSR_Control_t pump_ctrl;
 static SSR_Control_t valve_ctrl;
 static PWM_Pump_t pwm_percent_pump = PWM_PUMP_0_PERCENT;
 static uint8_t pwm_percent_heater[10] = {0};
+static uint8_t pwm_percent_heater_int = 0;
 
 
 static void heater_timer_cb(TimerHandle_t pxTimer);
@@ -357,6 +358,12 @@ void SSRCTRL_set_pwm_heater(uint8_t percent)
     for (uint8_t tens = 0; tens < max_tens; tens++)
       pwm_percent_heater[tens] += 1;
   }
+  pwm_percent_heater_int = percent;
+}
+
+uint8_t SSRCTRL_get_pwm_heater(void)
+{
+  return pwm_percent_heater_int;
 }
 
 void SSRCTRL_set_pwm_pump(uint8_t percent)
@@ -388,6 +395,34 @@ void SSRCTRL_set_pwm_pump(uint8_t percent)
     Serial.println("SSRctrl: pump pwm percent not valid!");
     pwm_percent_pump = PWM_PUMP_0_PERCENT;
   }
+}
+
+uint8_t SSRCTRL_get_pwm_pump(void)
+{
+  if (pwm_percent_pump == PWM_PUMP_0_PERCENT)
+    return 0;
+  else if (pwm_percent_pump == PWM_PUMP_10_PERCENT)
+    return 10;
+  else if (pwm_percent_pump == PWM_PUMP_20_PERCENT)
+    return 20;
+  else if (pwm_percent_pump == PWM_PUMP_30_PERCENT)
+    return 30;
+  else if (pwm_percent_pump == PWM_PUMP_40_PERCENT)
+    return 40;
+  else if (pwm_percent_pump == PWM_PUMP_50_PERCENT)
+    return 50;
+  else if (pwm_percent_pump == PWM_PUMP_60_PERCENT)
+    return 60;
+  else if (pwm_percent_pump == PWM_PUMP_70_PERCENT)
+    return 70;
+  else if (pwm_percent_pump == PWM_PUMP_80_PERCENT)
+    return 80;
+  else if (pwm_percent_pump == PWM_PUMP_90_PERCENT)
+    return 90;
+  else if (pwm_percent_pump == PWM_PUMP_100_PERCENT)
+    return 100;
+  else
+    return 0;
 }
 
 void SSRCTRL_set_state_valve(bool enable)
