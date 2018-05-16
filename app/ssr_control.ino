@@ -98,18 +98,26 @@ uint8_t SSRCTRL_setup(void)
 static void heater_timer_cb(TimerHandle_t pxTimer)
 {
   static uint32_t period_counter = 0;  // 0 to 99 elapsed periods
+//  static uint32_t periods_on = 0;
   (void)pxTimer;
   
   if (enabled != true)
     return;
   
-  if (pwm_percent_heater[period_counter/10] > period_counter - period_counter/10)
+  if (pwm_percent_heater[period_counter/10] > period_counter % 10)
+  {
     SSR_HEATER_ON();
+//    periods_on++;
+  }
   else
     SSR_HEATER_OFF();
   
   if (++period_counter >= 100)
+  {
     period_counter = 0;
+//    Serial.println("periods on: " + String(periods_on));
+//    periods_on = 0;
+  }
 }
 
 static void pump_timer_cb(TimerHandle_t pxTimer)
@@ -326,12 +334,7 @@ bool SSRCTRL_getState(void)
 }
 
 void SSRCTRL_set_pwm_heater(uint8_t percent)
-{
-  // if (percent == 100)
-    // SSR_HEATER_ON();
-  // else
-    // SSR_HEATER_OFF();
-    
+{ 
   if (percent > 100)
   {
     percent = 0;
@@ -359,6 +362,11 @@ void SSRCTRL_set_pwm_heater(uint8_t percent)
       pwm_percent_heater[tens] += 1;
   }
   pwm_percent_heater_int = percent;
+  
+//  Serial.println("Heater percent: " + String(percent));
+//  for (uint8_t i = 0; i < 10; i++)
+//    Serial.print(String(pwm_percent_heater[i]) + " ");
+//  Serial.println("");
 }
 
 uint8_t SSRCTRL_get_pwm_heater(void)
