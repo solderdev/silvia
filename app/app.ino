@@ -10,6 +10,8 @@
 #define LED_ON     digitalWrite(PIN_LED_GREEN, HIGH)
 #define LED_OFF    digitalWrite(PIN_LED_GREEN, LOW)
 
+#define BREW_TEMP_DEFAULT   95.0f
+#define STEAM_TEMP_DEFAULT  130.0f
 
 uint32_t lastmilli = 0;
 
@@ -20,10 +22,11 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
-  WIFI_setup();
+  //WIFI_setup();
   SENSORS_setup();
   SSRCTRL_setup();
-  if (PID_setup(20.0, 1.5, 5, 1000))
+  SHOT_setup();
+  if (PID_setup(25.0, 0.5, 15, 1000))  // P, I, D, t_s
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
@@ -48,17 +51,17 @@ void loop()
 //                   String(" Sw Water: ") + String(BTN_getSwitchStateWater()) + 
 //                   String(" Sw Steam: ") + String(BTN_getSwitchStateSteam()));
 //    Serial.println(WiFi.RSSI());
-    Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
-                   "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
-                   "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / " +
-                   "Power " + String(power_state));
+//    Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
+//                   "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
+//                   "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / " +
+//                   "Power " + String(power_state));
   
     if (SSRCTRL_getState() == false)
     {
       digitalWrite(PIN_LED_GREEN, LOW);
       led_state = 0;
     }
-    else if (SENSORS_get_temp_boiler_side() < 96.0f)
+    else if (SENSORS_get_temp_boiler_side() < PID_getTargetTemp()-1 || SENSORS_get_temp_boiler_side() > PID_getTargetTemp()+1)
     {
       if (led_state)
         digitalWrite(PIN_LED_GREEN, HIGH);
@@ -71,10 +74,6 @@ void loop()
       digitalWrite(PIN_LED_GREEN, HIGH);
       led_state = 1;
     }
-    
-//    percent_p_test += 10;
-//    if (percent_p_test > 110)
-//      percent_p_test = 0;
   }
 
   if (BTN_getButtonStatePower() == true && power_trigger_available)
@@ -99,51 +98,61 @@ void loop()
   else if (BTN_getButtonStatePower() == false)
     power_trigger_available = 1;
 
-  PID_setTargetTemp(97.0f);
+  // Coffee  Water  Steam
+  // ---------------------
+  //    0      0      0    all off
+  //    0      0      1    temp: steam
+  //    0      1      1    temp: steam, pump 50%
+  //    0      1      0    pump 50%
+  //    1      0      0    start shot
+  //    1      1      0    valve open, pump 100%
+  //    1      1      1    valve open, pump 10%
 
-  if (BTN_getSwitchStateCoffee() == true && BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
+  if (BTN_getSwitchStateCoffee() == true && SENSORS_get_temp_boiler_side() < 110)
   {
-    SSRCTRL_set_state_valve(true);
-    SSRCTRL_set_pwm_pump(100);
+    // coffee switch on and ready to brew
+    if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
+    {
+      SHOT_start(500, 3000, 2000, 10, 50);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+    }
+    else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
+    {
+      SHOT_stop(true, 100);
+      SSRCTRL_set_state_valve(true);
+      SSRCTRL_set_pwm_pump(100);
+    }
+    else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == true)
+    {
+      preheat: valve open - 100% pump (2s) - valve close - delay (500ms) - 0% pump .. repeat every 30s
+      SHOT_stop(true, 10);
+      SSRCTRL_set_state_valve(true);
+      SSRCTRL_set_pwm_pump(10);
+    }
   }
-  else if (BTN_getSwitchStateCoffee() == true && BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == true)
+  else if (BTN_getSwitchStateCoffee() == false)
   {
-    SSRCTRL_set_state_valve(true);
-    SSRCTRL_set_pwm_pump(10);
-  }
-  else if (BTN_getSwitchStateCoffee() == false && BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
-  {
+    // coffe switch off:
+    // close valve, stop shot if active
+    SHOT_stop(false, 0);
     SSRCTRL_set_state_valve(false);
-    SSRCTRL_set_pwm_pump(50);
-  }
-  else if (BTN_getSwitchStateCoffee() == false && BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == true)
-  {
-    SSRCTRL_set_state_valve(false);
-    SSRCTRL_set_pwm_pump(10);
+    if (BTN_getSwitchStateWater() == true)
+      SSRCTRL_set_pwm_pump(50);
+    else
+      SSRCTRL_set_pwm_pump(0);
   }
   else
   {
+    SHOT_stop(false, 0);
     SSRCTRL_set_state_valve(false);
     SSRCTRL_set_pwm_pump(0);
   }
-    
-
-//  if (BTN_getSwitchStateCoffee())
-//    SSRCTRL_set_state_valve(true);
-//  else
-//    SSRCTRL_set_state_valve(false);
-//    
-//  if (BTN_getSwitchStateWater())
-//    SSRCTRL_set_pwm_pump(percent_p_test);
-//  else
-//    SSRCTRL_set_pwm_pump(0);
-//    
-//  if (BTN_getSwitchStateSteam())
-//    SSRCTRL_set_pwm_heater(100);
-//  else
-//    SSRCTRL_set_pwm_heater(0);
   
-  WIFI_service();
+  if (BTN_getSwitchStateSteam() == true && BTN_getSwitchStateCoffee() == false)
+    PID_setTargetTemp(STEAM_TEMP_DEFAULT);
+  else
+    PID_setTargetTemp(BREW_TEMP_DEFAULT);
+  
+  //WIFI_service();
   //DISPLAY_service();
 
 //  if (BTN_getDDcw())
