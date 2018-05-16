@@ -25,7 +25,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer);
 
 void SHOT_setup(void)
 {
-  SHOT_stop();
+  SHOT_stop(false, 0);
 
   if (shot_timer == NULL)
   {
@@ -59,14 +59,14 @@ void SHOT_start(uint32_t init_fill_ms, uint32_t time_ramp_ms, uint32_t time_paus
   }
 }
 
-void SHOT_stop(void)
+void SHOT_stop(bool valve, uint8_t pump_percent)
 {
   if (shot_state != SHOT_OFF)
   {
     shot_state = SHOT_OFF;
     xTimerStop(shot_timer, portMAX_DELAY);
-    SSRCTRL_set_state_valve(false);
-    SSRCTRL_set_pwm_pump(0);
+    SSRCTRL_set_state_valve(valve);
+    SSRCTRL_set_pwm_pump(pump_percent);
   }
 }
 
@@ -79,6 +79,8 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
 {
   static uint8_t shot_current_ramp_percent = 0;
   (void)pxTimer;
+  
+  //Serial.println("Shot state " + String(shot_state));
   
   switch (shot_state)
   {
