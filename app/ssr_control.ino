@@ -341,32 +341,34 @@ void SSRCTRL_set_pwm_heater(uint8_t percent)
     Serial.println("SSRctrl: heater percent > 100!");
   }
   
-  if (percent == 100)
+  if (pwm_percent_heater_int != percent)
   {
-    memset(pwm_percent_heater, 0xFF, sizeof(pwm_percent_heater));  // set array
-  }
-  else
-  {
-    memset(pwm_percent_heater, 0, sizeof(pwm_percent_heater));  // reset array
-    
-    // fill array in each 10-percent field (tens) with 1s according to number of every 10%
-    uint8_t max_ones = percent/10;
-    for (uint8_t tens = 0; tens < 10; tens++)
+    if (percent == 100)
     {
-      for (uint8_t ones = 0; ones < max_ones; ones++)
+      memset(pwm_percent_heater, 0xFF, sizeof(pwm_percent_heater));  // set array
+    }
+    else
+    {
+      memset(pwm_percent_heater, 0, sizeof(pwm_percent_heater));  // reset array
+      
+      // fill array in each 10-percent field (tens) with 1s according to number of every 10%
+      uint8_t max_ones = percent/10;
+      for (uint8_t tens = 0; tens < 10; tens++)
+      {
+        for (uint8_t ones = 0; ones < max_ones; ones++)
+          pwm_percent_heater[tens] += 1;
+      }
+      // now handle remaining 0% to 9% on the first digit of the overall percent value
+      uint8_t max_tens = percent - (percent/10) * 10;
+      for (uint8_t tens = 0; tens < max_tens; tens++)
         pwm_percent_heater[tens] += 1;
     }
-    // now handle remaining 0% to 9% on the first digit of the overall percent value
-    uint8_t max_tens = percent - (percent/10) * 10;
-    for (uint8_t tens = 0; tens < max_tens; tens++)
-      pwm_percent_heater[tens] += 1;
-  }
-  pwm_percent_heater_int = percent;
-  
+    pwm_percent_heater_int = percent;
 //  Serial.println("Heater percent: " + String(percent));
 //  for (uint8_t i = 0; i < 10; i++)
 //    Serial.print(String(pwm_percent_heater[i]) + " ");
 //  Serial.println("");
+  }
 }
 
 uint8_t SSRCTRL_get_pwm_heater(void)
