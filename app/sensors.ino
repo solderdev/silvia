@@ -18,14 +18,14 @@ float val_degc_boiler_side = 888.0f;
 float val_degc_boiler_top = 888.0f;
 float val_degc_brewhead = 888.0f;
 
-static SemaphoreHandle_t sensor_sem_update = NULL;
-static TimerHandle_t sensor_timer_update = NULL;
-static TaskHandle_t sensor_task_handle = NULL;
-
-
-static void sensor_timer_cb(TimerHandle_t pxTimer);
-static void sensor_task(void * pvParameters);
-static void SENSORS_update(void);
+//static SemaphoreHandle_t sensor_sem_update = NULL;
+//static TimerHandle_t sensor_timer_update = NULL;
+//static TaskHandle_t sensor_task_handle = NULL;
+//
+//
+//static void sensor_timer_cb(TimerHandle_t pxTimer);
+//static void sensor_task(void * pvParameters);
+//static void SENSORS_update(void);
 
 
 void SENSORS_setup(void)
@@ -55,43 +55,55 @@ void SENSORS_setup(void)
   Serial.println("ADC ideal_offset " + String(adc_chars.ideal_offset));
   Serial.println("ADC bit_width " + String(adc_chars.bit_width));
 
-  // sync semaphore
-  sensor_sem_update = xSemaphoreCreateBinary();
-  if (sensor_sem_update == NULL)
-    return; // error
-    
-  // update timer
-  sensor_timer_update = xTimerCreate("tmr_sensor", pdMS_TO_TICKS(SENSOR_UPDATE_RATE), pdTRUE, NULL, sensor_timer_cb);
-  if (sensor_timer_update == NULL)
-    return; // error
-  xTimerStart(sensor_timer_update, portMAX_DELAY);
-
-  // create task
-  if (xTaskCreate(sensor_task, "task_sensor", SENSOR_TASK_STACKSIZE, NULL, 5, &sensor_task_handle) != pdPASS)
-    return; // error
+//  // sync semaphore
+//  sensor_sem_update = xSemaphoreCreateBinary();
+//  if (sensor_sem_update == NULL)
+//    return; // error
+//    
+//  // update timer
+//  sensor_timer_update = xTimerCreate("tmr_sensor", pdMS_TO_TICKS(SENSOR_UPDATE_RATE), pdTRUE, NULL, sensor_timer_cb);
+//  if (sensor_timer_update == NULL)
+//    return; // error
+//  xTimerStart(sensor_timer_update, portMAX_DELAY);
+//
+//  // create task
+//  if (xTaskCreate(sensor_task, "task_sensor", SENSOR_TASK_STACKSIZE, NULL, 5, &sensor_task_handle) != pdPASS)
+//    return; // error
 }
 
-static void sensor_timer_cb(TimerHandle_t pxTimer)
-{
-  (void)pxTimer;
-  xSemaphoreGive(sensor_sem_update);
-}
+//static void sensor_timer_cb(TimerHandle_t pxTimer)
+//{
+//  (void)pxTimer;
+//  xSemaphoreGive(sensor_sem_update);
+//}
 
-static void sensor_task(void * pvParameters)
-{ 
-  while(1)
-  {
-    xSemaphoreTake(sensor_sem_update, portMAX_DELAY);
-
-    SENSORS_update();
-  }
-}
+//static void sensor_task(void * pvParameters)
+//{ 
+//  while(1)
+//  {
+//    xSemaphoreTake(sensor_sem_update, portMAX_DELAY);
+//
+//    SENSORS_update();
+//  }
+//}
 
 static void SENSORS_update(void)
 {
-  uint32_t val_mV_boiler_side = adc1_to_voltage(PIN_BOILER_SIDE, &adc_chars);
-  uint32_t val_mV_boiler_top = adc1_to_voltage(PIN_BOILER_TOP, &adc_chars);
-  uint32_t val_mV_brewhead = adc1_to_voltage(PIN_BREWHEAD, &adc_chars);
+  float val_mV_boiler_side, val_mV_boiler_top, val_mV_brewhead;
+  uint64_t sum_side = 0, sum_top = 0, sum_brewhead = 0;
+  
+//  uint32_t time_ = millis();
+  for (uint8_t i = 100; i; i--) // 100x3chan --> 7-8 ms
+  {
+    sum_side += adc1_to_voltage(PIN_BOILER_SIDE, &adc_chars);
+    sum_top += adc1_to_voltage(PIN_BOILER_TOP, &adc_chars);
+    sum_brewhead += adc1_to_voltage(PIN_BREWHEAD, &adc_chars);
+  }
+  val_mV_boiler_side = sum_side / 100.0;
+  val_mV_boiler_top = sum_top / 100.0;
+  val_mV_brewhead = sum_brewhead / 100.0;
+//  time_ = millis() - time_;
+//  Serial.println(String(time_));
   
   val_degc_boiler_side = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_boiler_side) ) ) / (2 * -0.00433) + 30;
   val_degc_boiler_top  = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_boiler_top) ) ) / (2 * -0.00433) + 30;
@@ -117,6 +129,14 @@ float SENSORS_get_temp_boiler_side(void)
 float SENSORS_get_temp_boiler_top(void)
 {
   return val_degc_boiler_top;
+}
+
+float SENSORS_get_temp_boiler_max(void)
+{
+  if (val_degc_boiler_side > val_degc_boiler_top)
+    return val_degc_boiler_side;
+  else
+    return val_degc_boiler_top;
 }
 
 float SENSORS_get_temp_brewhead(void)
