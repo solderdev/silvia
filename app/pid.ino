@@ -107,70 +107,92 @@ static void pid_task(void * pvParameters)
   
   while(1)
   {
-
     // wait until the new PID-update is almost ready
     // update temperatures shortly before
     vTaskDelay(pdMS_TO_TICKS(pid_ts - 50));
     SENSORS_update();
     
-    xSemaphoreTake(pid_sem_update, portMAX_DELAY);
-    // Serial.println("PID running at " + String(millis()));
-
-    pv = SENSORS_get_temp_boiler_max();
-    e = target_temp - pv;
-
-//    // thermostat
-//    if (pv < target_temp)
-//      SSRCTRL_set_pwm_heater(100);
-//    else
-//      SSRCTRL_set_pwm_heater(0);
-
-    // PID type C
-    float p_share = -kP * (pv - pid_pv1);
-    float i_share = kI * ((float)(pid_ts)/1000.0f) * e;
-    float d_share = -(kD * (pv - 2*pid_pv1 + pid_pv2)) / ((float)(pid_ts)/1000.0f);
-    u = lroundf(pid_u1 + p_share + i_share + d_share);
-    
-//    u = lroundf(
-//        pid_u1
-//        - kP * (pv - pid_pv1)
-//        + kI * pid_ts * e 
-//        - (kD * (pv - 2*pid_pv1 + pid_pv2)) / (float)(pid_ts));
-
-    u_limited = u;
-    if (u_limited < 0)
-      u_limited = 0;
-    else if (u_limited > 100)
-      u_limited = 100;
+    if (xSemaphoreTake(pid_sem_update, portMAX_DELAY) == pdTRUE)
+    {
+      // Serial.println("PID running at " + String(millis()));
+  
+      pv = (SENSORS_get_temp_boiler_top() + SENSORS_get_temp_boiler_side()) / 2;  // SENSORS_get_temp_boiler_max();
+      e = target_temp - pv;
+  
+      // PID type C
+      float p_share = kP * (pid_pv1 - pv);
+      float i_share = kI * ((float)(pid_ts)/1000.0f) * e;
+      float d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
+      u = lroundf(pid_u1 + p_share + i_share + d_share);
       
-    SSRCTRL_set_pwm_heater(u_limited);
-
-    // save old values
-    pid_pv2 = pid_pv1;
-    pid_pv1 = pv;
-    pid_u1 = u_limited;
-
-    if (1)
-      Serial.println(String(millis()) + " , " + 
-                     String(target_temp) + " , " + 
-                     String(SENSORS_get_temp_boiler_side()) + " , " + 
-                     String(SENSORS_get_temp_boiler_top()) + " , " + 
-                     String(SENSORS_get_temp_brewhead()) + " , " + 
-                     String(SSRCTRL_get_pwm_heater()) + " , " + 
-                     String(SSRCTRL_get_pwm_pump()) + " , " + 
-                     String(u) + " , " + 
-                     String(p_share) + " , " + 
-                     String(i_share) + " , " + 
-                     String(d_share) );
-
-//    // step response
-//    if (!test_done && temp < 100)
-//      SSRCTRL_set_pwm_heater(100);
-//    else
-//    {
-//      SSRCTRL_set_pwm_heater(0);
-//      test_done = true;
-//    }
+  //    u = lroundf(
+  //        pid_u1
+  //        - kP * (pv - pid_pv1)
+  //        + kI * pid_ts * e 
+  //        - (kD * (pv - 2*pid_pv1 + pid_pv2)) / (float)(pid_ts));
+  
+      u_limited = u;
+      if (SSRCTRL_get_pwm_pump() == 0)
+      {
+        if (u_limited > 5 && (pv >= target_temp || fabsf(e) < 1))
+          u_limited = 5;
+      }
+      else
+      {
+        //if (pv >= target_temp && u_limited > 20)
+        //  u_limited = 20;
+      }
+      
+      if (u_limited < 0)
+        u_limited = 0;
+      else if (u_limited > 100)
+        u_limited = 100;
+        
+      SSRCTRL_set_pwm_heater(u_limited);
+  
+      // for ziegler-nicholds
+  //    if (target_temp < 100)
+  //      SSRCTRL_set_pwm_heater(1);
+  //    else
+  //      SSRCTRL_set_pwm_heater(3);
+  
+      // thermostat
+  //    if (pv < target_temp)
+  //      SSRCTRL_set_pwm_heater(100);
+  //    else
+  //      SSRCTRL_set_pwm_heater(0);
+  
+      // save old values
+      pid_pv2 = pid_pv1;
+      pid_pv1 = pv;
+      pid_u1 = u_limited;
+  
+      if (1)
+        Serial.println(String(millis()) + " , " + 
+                       String(target_temp) + " , " + 
+                       String(SENSORS_get_temp_boiler_side()) + " , " + 
+                       String(SENSORS_get_temp_boiler_top()) + " , " + 
+                       String(SENSORS_get_temp_brewhead()) + " , " + 
+                       String(SSRCTRL_get_pwm_heater()) + " , " + 
+                       String(SSRCTRL_get_pwm_pump()) + " , " + 
+                       String(u) + " , " + 
+                       String(p_share) + " , " + 
+                       String(i_share) + " , " + 
+                       String(d_share) );
+  
+  //    // step response
+  //    if (!test_done && temp < 100)
+  //      SSRCTRL_set_pwm_heater(100);
+  //    else
+  //    {
+  //      SSRCTRL_set_pwm_heater(0);
+  //      test_done = true;
+  //    }
+    }
+    else
+    {
+      
+    }
   }
 }
 
