@@ -26,7 +26,8 @@ void setup() {
   SENSORS_setup();
   SSRCTRL_setup();
   SHOT_setup();
-  if (PID_setup(25.0, 0.5, 15, 1000))  // P, I, D, t_s
+  PREHEAT_setup();
+  if (PID_setup(25, 0.4, 10, 1000))  // P, I, D, t_s   
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
@@ -106,7 +107,7 @@ void loop()
   //    0      1      0    pump 50%
   //    1      0      0    start shot
   //    1      1      0    valve open, pump 100%
-  //    1      1      1    valve open, pump 10%
+  //    1      1      1    start preheat
 
   if (BTN_getSwitchStateCoffee() == true && SENSORS_get_temp_boiler_side() < 110)
   {
@@ -118,22 +119,23 @@ void loop()
     else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
     {
       SHOT_stop(true, 100);
+      PREHEAT_stop(true, 100);
       SSRCTRL_set_state_valve(true);
       SSRCTRL_set_pwm_pump(100);
     }
     else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == true)
     {
-      preheat: valve open - 100% pump (2s) - valve close - delay (500ms) - 0% pump .. repeat every 30s
-      SHOT_stop(true, 10);
-      SSRCTRL_set_state_valve(true);
-      SSRCTRL_set_pwm_pump(10);
+      //preheat: valve open - 100% pump (2s) - valve close - delay (800ms) - 0% pump .. repeat every 10s
+      SHOT_stop(true, 100);
+      PREHEAT_start(2000, 800, 10000);  // ms 100% pump , ms build pressure, ms pause)
     }
   }
   else if (BTN_getSwitchStateCoffee() == false)
   {
     // coffe switch off:
-    // close valve, stop shot if active
+    // close valve, stop shot/preheat if active
     SHOT_stop(false, 0);
+    PREHEAT_stop(false, 0);
     SSRCTRL_set_state_valve(false);
     if (BTN_getSwitchStateWater() == true)
       SSRCTRL_set_pwm_pump(50);
@@ -143,6 +145,7 @@ void loop()
   else
   {
     SHOT_stop(false, 0);
+    PREHEAT_stop(false, 0);
     SSRCTRL_set_state_valve(false);
     SSRCTRL_set_pwm_pump(0);
   }
