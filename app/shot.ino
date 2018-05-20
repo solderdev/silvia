@@ -63,8 +63,8 @@ void SHOT_stop(bool valve, uint8_t pump_percent)
 {
   if (shot_state != SHOT_OFF)
   {
-    shot_state = SHOT_OFF;
     xTimerStop(shot_timer, portMAX_DELAY);
+    shot_state = SHOT_OFF;
     SSRCTRL_set_state_valve(valve);
     SSRCTRL_set_pwm_pump(pump_percent);
   }
