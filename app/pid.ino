@@ -64,6 +64,7 @@ void PID_start(void)
   pid_pv1 = SENSORS_get_temp_boiler_max();
   pid_u1 = 0;
   
+  SSRCTRL_sync();
   if (pid_timer_update != NULL)
     xTimerStart(pid_timer_update, portMAX_DELAY);
   Serial.println("PID controller ON!");
@@ -116,7 +117,7 @@ static void pid_task(void * pvParameters)
     {
       // Serial.println("PID running at " + String(millis()));
   
-      pv = (SENSORS_get_temp_boiler_top() + SENSORS_get_temp_boiler_side()) / 2;  // SENSORS_get_temp_boiler_max();
+      pv = SENSORS_get_temp_boiler_avg();  // SENSORS_get_temp_boiler_max();
       e = target_temp - pv;
   
       // PID type C
@@ -136,11 +137,12 @@ static void pid_task(void * pvParameters)
       {
         if (u_limited > 5 && (pv >= target_temp || fabsf(e) < 1))
           u_limited = 5;
+        if (u_limited > 10 && fabsf(e) < 4)
+          u_limited = 10;
       }
-      else
+      else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
       {
-        //if (pv >= target_temp && u_limited > 20)
-        //  u_limited = 20;
+        u_limited = 40;
       }
       
       if (u_limited < 0)

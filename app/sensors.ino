@@ -139,6 +139,11 @@ float SENSORS_get_temp_boiler_max(void)
     return val_degc_boiler_top;
 }
 
+float SENSORS_get_temp_boiler_avg(void)
+{
+  return (val_degc_boiler_side + val_degc_boiler_top) / 2;
+}
+
 float SENSORS_get_temp_brewhead(void)
 {
   return val_degc_brewhead;

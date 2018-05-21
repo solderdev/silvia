@@ -333,6 +333,11 @@ bool SSRCTRL_getState(void)
   return enabled;
 }
 
+void SSRCTRL_sync(void)
+{
+  xTimerReset(heater_ctrl.timer_pwm, 0);
+}
+
 void SSRCTRL_set_pwm_heater(uint8_t percent)
 { 
   if (percent > 100)
