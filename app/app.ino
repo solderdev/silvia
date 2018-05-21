@@ -11,7 +11,7 @@
 #define LED_OFF    digitalWrite(PIN_LED_GREEN, LOW)
 
 #define BREW_TEMP_DEFAULT   95.0f
-#define STEAM_TEMP_DEFAULT  130.0f
+#define STEAM_TEMP_DEFAULT  120.0f
 
 uint32_t lastmilli = 0;
 
@@ -42,7 +42,8 @@ void loop()
 {
 //  static int percent_p_test = 0;
   static uint8_t led_state = 1;
-  static uint8_t power_state = 0, power_trigger_available = 1;
+  static uint8_t power_trigger_available = 1;
+  static uint32_t power_state = 0;
   
   if (millis() - lastmilli > 500 )
   {
@@ -62,7 +63,7 @@ void loop()
       digitalWrite(PIN_LED_GREEN, LOW);
       led_state = 0;
     }
-    else if (SENSORS_get_temp_boiler_side() < PID_getTargetTemp()-1 || SENSORS_get_temp_boiler_side() > PID_getTargetTemp()+1)
+    else if (SENSORS_get_temp_boiler_avg() < PID_getTargetTemp()-1 || SENSORS_get_temp_boiler_avg() > PID_getTargetTemp()+1)
     {
       if (led_state)
         digitalWrite(PIN_LED_GREEN, HIGH);
@@ -91,13 +92,22 @@ void loop()
     else
     {
       Serial.println("powering UP!");
-      power_state = 1;
+      power_state = millis();
       PID_start();
       SSRCTRL_on();
     }
   }
   else if (BTN_getButtonStatePower() == false)
     power_trigger_available = 1;
+
+  if (power_state + 30u * 60u * 1000u > millis())
+  {
+    // on for more than 30 min
+    Serial.println("AUTO powering DOWN!");
+    power_state = 0;
+    PID_stop();
+    SSRCTRL_off();
+  }
 
   // Coffee  Water  Steam
   // ---------------------
@@ -114,7 +124,7 @@ void loop()
     // coffee switch on and ready to brew
     if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
     {
-      SHOT_start(500, 3000, 2000, 10, 50);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+      SHOT_start(500, 4000, 2000, 10, 50);  // init-100p-t, ramp-t, pause-t, min-%, max-%
     }
     else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
     {
