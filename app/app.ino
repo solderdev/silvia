@@ -100,7 +100,7 @@ void loop()
   else if (BTN_getButtonStatePower() == false)
     power_trigger_available = 1;
 
-  if (power_state + 30u * 60u * 1000u > millis())
+  if (power_state != 0 && power_state + 30u * 60u * 1000u < millis())
   {
     // on for more than 30 min
     Serial.println("AUTO powering DOWN!");
@@ -121,6 +121,8 @@ void loop()
 
   if (BTN_getSwitchStateCoffee() == true && SENSORS_get_temp_boiler_side() < 110)
   {
+    power_state = millis();  // re-set power-off timer
+    
     // coffee switch on and ready to brew
     if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
     {
@@ -148,7 +150,10 @@ void loop()
     PREHEAT_stop(false, 0);
     SSRCTRL_set_state_valve(false);
     if (BTN_getSwitchStateWater() == true)
+    {
+      power_state = millis();  // re-set power-off timer
       SSRCTRL_set_pwm_pump(50);
+    }
     else
       SSRCTRL_set_pwm_pump(0);
   }
