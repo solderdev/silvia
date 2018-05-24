@@ -133,6 +133,11 @@ static void pid_task(void * pvParameters)
   //        - (kD * (pv - 2*pid_pv1 + pid_pv2)) / (float)(pid_ts));
   
       u_limited = u;
+
+      // faster heat-up
+      if (e > 20)
+        u_limited = 100;
+
       if (SSRCTRL_get_pwm_pump() == 0)
       {
         if (u_limited > 5 && (pv >= target_temp || fabsf(e) < 1))
@@ -140,10 +145,10 @@ static void pid_task(void * pvParameters)
         if (u_limited > 10 && fabsf(e) < 4)
           u_limited = 10;
       }
-      else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
-      {
-        u_limited = 40;
-      }
+      // else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
+      // {
+      //   u_limited = 40;
+      // }
       
       if (u_limited < 0)
         u_limited = 0;
