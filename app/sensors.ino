@@ -8,9 +8,10 @@
 #define SENSOR_TASK_PRIORITY   4      // idle: 0, main-loop: 1, wifi: 2, pid: 5, sensors: 4
 #define SENSOR_UPDATE_RATE     100    // [ms]
 
-#define PIN_BOILER_SIDE  ADC1_CHANNEL_6
-#define PIN_BOILER_TOP   ADC1_CHANNEL_0
-#define PIN_BREWHEAD     ADC1_CHANNEL_3
+#define ADC_SENSORS      ADC_UNIT_1
+#define PIN_BOILER_SIDE  ADC_CHANNEL_6
+#define PIN_BOILER_TOP   ADC_CHANNEL_0
+#define PIN_BREWHEAD     ADC_CHANNEL_3
 
 esp_adc_cal_characteristics_t adc_chars;
 
@@ -39,20 +40,29 @@ void SENSORS_setup(void)
   // ADC capture width is 12Bit
   adc1_config_width(ADC_WIDTH_12Bit);
   // ADC1 channel 6 is GPIO34, full-scale voltage 3.9V
-  adc1_config_channel_atten(PIN_BOILER_SIDE, ADC_ATTEN_11db);
-  adc1_config_channel_atten(PIN_BOILER_TOP, ADC_ATTEN_11db);
-  adc1_config_channel_atten(PIN_BREWHEAD, ADC_ATTEN_11db);
+  adc1_config_channel_atten((adc1_channel_t)(PIN_BOILER_SIDE), ADC_ATTEN_11db);
+  adc1_config_channel_atten((adc1_channel_t)(PIN_BOILER_TOP), ADC_ATTEN_11db);
+  adc1_config_channel_atten((adc1_channel_t)(PIN_BREWHEAD), ADC_ATTEN_11db);
   
 //  // measure ADC Vref
 //  esp_err_t error = adc2_vref_to_gpio(GPIO_NUM_25);
 //  Serial.println(String(error));
 
   // setup ADC characteristics
-  esp_adc_cal_get_characteristics(ADC_VREF_MEASURED, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, &adc_chars);
-  Serial.println("ADC v_ref " + String(adc_chars.v_ref));
-  Serial.println("ADC gain " + String(adc_chars.gain));
-  Serial.println("ADC offset " + String(adc_chars.offset));
-  Serial.println("ADC ideal_offset " + String(adc_chars.ideal_offset));
+  memset(&adc_chars, 0, sizeof(adc_chars));
+  esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_SENSORS, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, ADC_VREF_MEASURED, &adc_chars);
+  
+  if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF)
+    Serial.println("ADC cal-type: eFuse Vref");
+  else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP)
+    Serial.println("ADC cal-type: Two Point");
+  else
+    Serial.println("ADC cal-type: Default");
+  
+  Serial.println("ADC vref " + String(adc_chars.vref));
+  Serial.println("ADC coeff_a " + String(adc_chars.coeff_a));
+  Serial.println("ADC coeff_b " + String(adc_chars.coeff_b));
+  Serial.println("ADC atten " + String(adc_chars.atten));
   Serial.println("ADC bit_width " + String(adc_chars.bit_width));
 
 //  // sync semaphore
@@ -91,13 +101,22 @@ static void SENSORS_update(void)
 {
   float val_mV_boiler_side, val_mV_boiler_top, val_mV_brewhead;
   uint64_t sum_side = 0, sum_top = 0, sum_brewhead = 0;
-  
+
 //  uint32_t time_ = millis();
   for (uint8_t i = 100; i; i--) // 100x3chan --> 7-8 ms
   {
-    sum_side += adc1_to_voltage(PIN_BOILER_SIDE, &adc_chars);
-    sum_top += adc1_to_voltage(PIN_BOILER_TOP, &adc_chars);
-    sum_brewhead += adc1_to_voltage(PIN_BREWHEAD, &adc_chars);
+    uint32_t voltage;
+    esp_err_t error = ESP_OK;
+
+    error |= esp_adc_cal_get_voltage(PIN_BOILER_SIDE, &adc_chars, &voltage);
+    sum_side += voltage;
+    error |= esp_adc_cal_get_voltage(PIN_BOILER_TOP, &adc_chars, &voltage);
+    sum_top += voltage;
+    error |= esp_adc_cal_get_voltage(PIN_BREWHEAD, &adc_chars, &voltage);
+    sum_brewhead += voltage;
+
+    if (error != ESP_OK)
+      return;
   }
   val_mV_boiler_side = sum_side / 100.0;
   val_mV_boiler_top = sum_top / 100.0;

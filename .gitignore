@@ -57,3 +57,4 @@ dkms.conf
 *.s#*
 
 .vscode/
+app_build/
