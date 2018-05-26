@@ -10,8 +10,8 @@
 #define LED_ON     digitalWrite(PIN_LED_GREEN, HIGH)
 #define LED_OFF    digitalWrite(PIN_LED_GREEN, LOW)
 
-#define BREW_TEMP_DEFAULT   95.0f
-#define STEAM_TEMP_DEFAULT  120.0f
+#define BREW_TEMP_DEFAULT   97.0f
+#define STEAM_TEMP_DEFAULT  118.0f
 
 uint32_t lastmilli = 0;
 
@@ -27,7 +27,7 @@ void setup() {
   SSRCTRL_setup();
   SHOT_setup();
   PREHEAT_setup();
-  if (PID_setup(25, 0.4, 10, 1000))  // P, I, D, t_s   
+  if (PID_setup(27, 0.4, 20, 1000))  // P, I, D, t_s   
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
@@ -126,7 +126,7 @@ void loop()
     // coffee switch on and ready to brew
     if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
     {
-      SHOT_start(500, 4000, 2000, 10, 50);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+      SHOT_start(500, 3000, 2000, 10, 50);  // init-100p-t, ramp-t, pause-t, min-%, max-%
     }
     else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
     {

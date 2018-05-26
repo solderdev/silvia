@@ -142,8 +142,8 @@ static void pid_task(void * pvParameters)
       {
         if (u_limited > 5 && (pv >= target_temp || fabsf(e) < 1))
           u_limited = 5;
-        if (u_limited > 10 && fabsf(e) < 4)
-          u_limited = 10;
+        if (u_limited > 15 && fabsf(e) < 4)
+          u_limited = 15;
       }
       // else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
       // {
