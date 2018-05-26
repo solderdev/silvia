@@ -51,7 +51,7 @@ uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
     return 1; // error
 
   // create task
-  if (xTaskCreate(pid_task, "task_pid", PID_TASK_STACKSIZE, NULL, 5, &pid_task_handle) != pdPASS)
+  if (xTaskCreate(pid_task, "task_pid", PID_TASK_STACKSIZE, NULL, PID_TASK_PRIORITY, &pid_task_handle) != pdPASS)
     return 1; // error
 
   return 0;

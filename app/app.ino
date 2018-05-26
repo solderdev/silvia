@@ -15,14 +15,15 @@
 
 uint32_t lastmilli = 0;
 
-void setup() {
+void setup()
+{
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIN_LED_GREEN, OUTPUT);
   digitalWrite(PIN_LED_GREEN, HIGH);
   Serial.begin(115200);
   delay(100);
 
-  //WIFI_setup();
+  WIFI_setup();
   SENSORS_setup();
   SSRCTRL_setup();
   SHOT_setup();
@@ -175,7 +176,6 @@ void loop()
   else
     PID_setTargetTemp(BREW_TEMP_DEFAULT);
   
-  //WIFI_service();
   //DISPLAY_service();
 
 //  if (BTN_getDDcw())

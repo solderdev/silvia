@@ -2,44 +2,60 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 
+#define WIFI_TASK_STACKSIZE  2000u  // [words]
+#define WIFI_TASK_PRIORITY   2      // idle: 0, main-loop: 1, wifi: 2, pid: 5, sensors: 4
+
+
 const char* ssid     = PRIVATE_SSID;     // your network SSID (name of wifi network)
 const char* password = PRIVATE_WIFIPW;   // your network password
 
 WiFiServer server(80);
 
+static TaskHandle_t wifi_task_handle = NULL;
+
+static void wifi_task(void * pvParameters);
+
+
 void WIFI_setup(void)
+{
+  if (wifi_task_handle == NULL)
+  {
+    if (xTaskCreate(wifi_task, "task_wifi", WIFI_TASK_STACKSIZE, NULL, WIFI_TASK_PRIORITY, &wifi_task_handle) != pdPASS)
+      return; // error
+  }
+}
+
+static void wifi_task(void * pvParameters)
 {
   Serial.print("Attempting to connect to SSID: ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
 
-  int millis_stop = millis() + 5000;
-  while (WiFi.status() != WL_CONNECTED && (millis() < millis_stop)) {
-    delay(500);
-    Serial.print(".");
-    // TODO - do this in a separate task
-  }
-  if (WiFi.status() != WL_CONNECTED)
+  while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.println("Error setting WIFI!");
-    return;
+    vTaskDelay(pdMS_TO_TICKS(501));
+    // Serial.print(".");
   }
 
   // be reachable under silvia.local
   if (!MDNS.begin("silvia"))
-  {
     Serial.println("Error setting up MDNS responder!");
-    return;
-  }
-  Serial.println("mDNS responder started");
+  else
+    Serial.println("mDNS responder started");
+
   MDNS.addService("http", "tcp", 80);
 
-  Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
   server.begin();
+
+  while (1)
+  {
+    WIFI_service();
+    vTaskDelay(pdMS_TO_TICKS(57));
+  }
 }
 
 void WIFI_service(void)
@@ -52,7 +68,7 @@ void WIFI_service(void)
   // Wait until the client sends some data
   Serial.println("new client");
   while(!client.available())
-    delay(1);
+    vTaskDelay(pdMS_TO_TICKS(1));
  
   // Read the first line of the request
   String request = client.readStringUntil('\r');
@@ -97,7 +113,7 @@ client.println("<div id=\"chart_div\"></div>");
 client.println("</body>");
 client.println("</html>");
  
-  //delay(1);
+  //vTaskDelay(pdMS_TO_TICKS(1));
   Serial.println("Client disonnected\n");
 }
 
@@ -111,7 +127,7 @@ void WIFI_service_led(void)
   // Wait until the client sends some data
   Serial.println("new client");
   while(!client.available())
-    delay(1);
+    vTaskDelay(pdMS_TO_TICKS(1));
  
   // Read the first line of the request
   String request = client.readStringUntil('\r');
@@ -154,7 +170,7 @@ void WIFI_service_led(void)
   client.println("<a href=\"/LED=OFF\"\"><button>Turn Off </button></a><br />");  
   client.println("</html>");
  
-  //delay(1);
+  //vTaskDelay(pdMS_TO_TICKS(1));
   Serial.println("Client disonnected\n");
 }
 
