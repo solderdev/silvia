@@ -53,18 +53,22 @@ void loop()
 //                   String(" Sw Water: ") + String(BTN_getSwitchStateWater()) + 
 //                   String(" Sw Steam: ") + String(BTN_getSwitchStateSteam()));
 //    Serial.println(WiFi.RSSI());
-//    Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
-//                   "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
-//                   "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / " +
-//                   "Power " + String(power_state));
+    if (power_state == 0)
+      Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
+                      "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
+                      "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / ");
   
     if (SSRCTRL_getState() == false)
     {
+      // machine off
       digitalWrite(PIN_LED_GREEN, LOW);
       led_state = 0;
     }
-    else if (SENSORS_get_temp_boiler_avg() < PID_getTargetTemp()-1 || SENSORS_get_temp_boiler_avg() > PID_getTargetTemp()+1)
+    else if (SENSORS_get_temp_boiler_avg() < PID_getTargetTemp()-1 ||
+             SENSORS_get_temp_boiler_avg() > PID_getTargetTemp()+1 ||
+             SENSORS_get_temp_brewhead() < 80)
     {
+      // temperature not optimal
       if (led_state)
         digitalWrite(PIN_LED_GREEN, HIGH);
       else
@@ -73,6 +77,7 @@ void loop()
     }
     else
     {
+      // temperature optimal for shot
       digitalWrite(PIN_LED_GREEN, HIGH);
       led_state = 1;
     }
