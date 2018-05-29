@@ -98,26 +98,18 @@ uint8_t SSRCTRL_setup(void)
 static void heater_timer_cb(TimerHandle_t pxTimer)
 {
   static uint32_t period_counter = 0;  // 0 to 99 elapsed periods
-//  static uint32_t periods_on = 0;
   (void)pxTimer;
   
   if (enabled != true)
     return;
   
   if (pwm_percent_heater[period_counter/10] > period_counter % 10)
-  {
     SSR_HEATER_ON();
-//    periods_on++;
-  }
   else
     SSR_HEATER_OFF();
   
   if (++period_counter >= 100)
-  {
     period_counter = 0;
-//    Serial.println("periods on: " + String(periods_on));
-//    periods_on = 0;
-  }
 }
 
 static void pump_timer_cb(TimerHandle_t pxTimer)

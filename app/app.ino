@@ -54,10 +54,9 @@ void loop()
 //                   String(" Sw Water: ") + String(BTN_getSwitchStateWater()) + 
 //                   String(" Sw Steam: ") + String(BTN_getSwitchStateSteam()));
 //    Serial.println(WiFi.RSSI());
-    if (power_state == 0)
-      Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
-                      "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
-                      "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / ");
+    // Serial.println("Boiler side: " + String(SENSORS_get_temp_boiler_side()) + 
+    //                 "C / Boiler top " + String(SENSORS_get_temp_boiler_top()) + 
+    //                 "C / Brewhead " + String(SENSORS_get_temp_brewhead()) + "C / ");
   
     if (SSRCTRL_getState() == false)
     {

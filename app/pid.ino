@@ -18,6 +18,7 @@ static float target_temp = 0.0f;  // [deg-C] target boiler temperature
 static uint8_t pid_u1 = 0;  // last output value
 static float pid_pv1 = 0.0f;  // last process value (temperature)
 static float pid_pv2 = 0.0f;  // second to last process value (temperature)
+static bool pid_enabled = false;
 
 static SemaphoreHandle_t pid_sem_update = NULL;
 static TimerHandle_t pid_timer_update = NULL;
@@ -49,6 +50,8 @@ uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
   pid_timer_update = xTimerCreate("tmr_pid", pdMS_TO_TICKS(pid_ts), pdTRUE, NULL, pid_timer_cb);
   if (pid_timer_update == NULL)
     return 1; // error
+  
+  xTimerStart(pid_timer_update, portMAX_DELAY);
 
   // create task
   if (xTaskCreate(pid_task, "task_pid", PID_TASK_STACKSIZE, NULL, PID_TASK_PRIORITY, &pid_task_handle) != pdPASS)
@@ -59,22 +62,23 @@ uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
 
 void PID_start(void)
 {
-  SENSORS_update();
-  pid_pv2 = SENSORS_get_temp_boiler_max();
-  pid_pv1 = SENSORS_get_temp_boiler_max();
+  pid_pv2 = SENSORS_get_temp_boiler_avg();
+  pid_pv1 = SENSORS_get_temp_boiler_avg();
   pid_u1 = 0;
   
   SSRCTRL_sync();
-  if (pid_timer_update != NULL)
-    xTimerStart(pid_timer_update, portMAX_DELAY);
+  xTimerReset(pid_timer_update, 0);
+  
+  WIFI_resetBuffer();
+
+  pid_enabled = true;
   Serial.println("PID controller ON!");
-  Serial.println(" P = " + String(kP) + " I = " + String(kI) + " D = " + String(kD));
+  Serial.println("P = " + String(kP) + " I = " + String(kI) + " D = " + String(kD));
 }
 
 void PID_stop(void)
 {
-  if (pid_timer_update != NULL)
-    xTimerStop(pid_timer_update, portMAX_DELAY);
+  pid_enabled = false;
   Serial.println("PID controller OFF!");
 }
 
@@ -101,11 +105,10 @@ static void pid_task(void * pvParameters)
 {
   float pv, e;
   int32_t u, u_limited;
-  
+  float p_share, i_share, d_share;
+  //bool test_done = false;
   (void)pvParameters;
 
-  //bool test_done = false;
-  
   while(1)
   {
     // wait until the new PID-update is almost ready
@@ -115,65 +118,76 @@ static void pid_task(void * pvParameters)
     
     if (xSemaphoreTake(pid_sem_update, portMAX_DELAY) == pdTRUE)
     {
-      // Serial.println("PID running at " + String(millis()));
-  
-      pv = SENSORS_get_temp_boiler_avg();  // SENSORS_get_temp_boiler_max();
-      e = target_temp - pv;
-  
-      // PID type C
-      float p_share = kP * (pid_pv1 - pv);
-      float i_share = kI * ((float)(pid_ts)/1000.0f) * e;
-      float d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
-      u = lroundf(pid_u1 + p_share + i_share + d_share);
-      
-  //    u = lroundf(
-  //        pid_u1
-  //        - kP * (pv - pid_pv1)
-  //        + kI * pid_ts * e 
-  //        - (kD * (pv - 2*pid_pv1 + pid_pv2)) / (float)(pid_ts));
-  
-      u_limited = u;
-
-      // faster heat-up
-      if (e > 20)
-        u_limited = 100;
-
-      if (SSRCTRL_get_pwm_pump() == 0)
+      if (pid_enabled == true)
       {
-        if (u_limited > 5 && (pv >= target_temp || fabsf(e) < 1))
-          u_limited = 5;
-        if (u_limited > 15 && fabsf(e) < 4)
-          u_limited = 15;
-      }
-      // else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
-      // {
-      //   u_limited = 40;
-      // }
-      
-      if (u_limited < 0)
-        u_limited = 0;
-      else if (u_limited > 100)
-        u_limited = 100;
+        // Serial.println("PID running at " + String(millis()));
+        pv = SENSORS_get_temp_boiler_avg();  // SENSORS_get_temp_boiler_max();
+        e = target_temp - pv;
+    
+        // PID type C
+        p_share = kP * (pid_pv1 - pv);
+        i_share = kI * ((float)(pid_ts)/1000.0f) * e;
+        d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
+        u = lroundf(pid_u1 + p_share + i_share + d_share);
         
-      SSRCTRL_set_pwm_heater(u_limited);
-  
-      // for ziegler-nicholds
-  //    if (target_temp < 100)
-  //      SSRCTRL_set_pwm_heater(1);
-  //    else
-  //      SSRCTRL_set_pwm_heater(3);
-  
-      // thermostat
-  //    if (pv < target_temp)
-  //      SSRCTRL_set_pwm_heater(100);
-  //    else
-  //      SSRCTRL_set_pwm_heater(0);
-  
-      // save old values
-      pid_pv2 = pid_pv1;
-      pid_pv1 = pv;
-      pid_u1 = u_limited;
-  
+        //u = lroundf(
+        //    pid_u1
+        //    - kP * (pv - pid_pv1)
+        //    + kI * pid_ts * e 
+        //    - (kD * (pv - 2*pid_pv1 + pid_pv2)) / (float)(pid_ts));
+    
+        u_limited = u;
+
+        // faster heat-up
+        if (e > 20)
+          u_limited = 100;
+
+        if (SSRCTRL_get_pwm_pump() == 0)
+        {
+          if (u_limited > 5 && pv >= target_temp)
+            u_limited = 5;
+          if (u_limited > 10 && fabsf(e) < 1)
+            u_limited = 10;
+          if (u_limited > 15 && fabsf(e) < 4)
+            u_limited = 15;
+        }
+        // else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
+        // {
+        //   u_limited = 40;
+        // }
+        
+        if (u_limited < 0)
+          u_limited = 0;
+        else if (u_limited > 100)
+          u_limited = 100;
+          
+        SSRCTRL_set_pwm_heater(u_limited);
+    
+        // for ziegler-nicholds
+    //    if (target_temp < 100)
+    //      SSRCTRL_set_pwm_heater(1);
+    //    else
+    //      SSRCTRL_set_pwm_heater(3);
+    
+        // thermostat
+    //    if (pv < target_temp)
+    //      SSRCTRL_set_pwm_heater(100);
+    //    else
+    //      SSRCTRL_set_pwm_heater(0);
+    
+        // save old values
+        pid_pv2 = pid_pv1;
+        pid_pv1 = pv;
+        pid_u1 = u_limited;
+      }  // end of pid_enabled
+      else
+      {
+        p_share = 0;
+        i_share = 0;
+        d_share = 0;
+        u = 0;
+      }
+
       if (1)
         Serial.println(String(millis()) + " , " + 
                        String(target_temp) + " , " + 
@@ -186,6 +200,16 @@ static void pid_task(void * pvParameters)
                        String(p_share) + " , " + 
                        String(i_share) + " , " + 
                        String(d_share) );
+
+      WIFI_addToBuffer(SENSORS_get_temp_boiler_top(), 
+                       SENSORS_get_temp_boiler_side(), 
+                       SENSORS_get_temp_brewhead(), 
+                       SSRCTRL_get_pwm_heater(),
+                       SSRCTRL_get_pwm_pump(),
+                       p_share,
+                       i_share,
+                       d_share,
+                       u);
   
   //    // step response
   //    if (!test_done && temp < 100)
@@ -195,11 +219,7 @@ static void pid_task(void * pvParameters)
   //      SSRCTRL_set_pwm_heater(0);
   //      test_done = true;
   //    }
-    }
-    else
-    {
-      
-    }
-  }
+    }  // end of sem take
+  }  // end of while(1)
 }
 
