@@ -16,34 +16,35 @@ pid_i = []
 pid_d = []
 
 
-# with open("data_p40.0_i2.0_d0.0.csv", "r") as f:
-# with open("data_p20.0_i0.6_d15.0.csv", "r") as f:
-# with open("data_p20.0_i0.5_d15.0.csv", "r") as f:
-# with open("shot_p25.0_i0.5_d15.0.csv", "r") as f:
-# with open("data_p80.0_i4.0_d15.0.csv", "r") as f:
-# with open("data_p80.0_i6.0_d15.0.csv", "r") as f:
-# with open("data_p100.0_i4.0_d15.0.csv", "r") as f:
-# with open("data_p100.0_i3.0_d15.0.csv", "r") as f:
-# with open("data_p150.0_i3.0_d50.0.csv", "r") as f:
-# with open("data_p150.0_i4.0_d20.0.csv", "r") as f:
-# with open("data_p100.0_i4.0_d20.0.csv", "r") as f:
-# with open("data_p70.0_i5.0_d20.0.csv", "r") as f:
-# with open("const_5perc.txt", "r") as f:
-# with open("const_1perc", "r") as f:  # max 93
-# with open("cold_boot_100perc_heater", "r") as f:  # max 95
-# with open("data_p11.0_i38.0_d9.5_test.csv", "r") as f:
-# with open("data_p11.0_i3.0_d9.5.csv", "r") as f:
-# with open("data_p11.0_i3.0_d9.5_sens_avg.csv", "r") as f:
-# with open("data_p100.0_i1.0_d0.0.csv", "r") as f:
-# with open("data_p50.0_i1.0_d0.0.csv", "r") as f:
-# with open("data_p50.0_i1.5_d0.0.csv", "r") as f:
-# with open("data_p25.0_i1.0_d0.0.csv", "r") as f:
-# with open("data_p25.0_i0.6_d0.0.csv", "r") as f:
-# with open("data_p25.0_i0.4_d10.0.csv", "r") as f:
-# with open("data_p25.0_i0.4_d10.0_wasserspiele.csv", "r") as f:
-# with open("data_p25.0_i0.4_d10.0_limited_5.csv", "r") as f:
-with open("data_p25.0_i0.4_d10.0_limited_5_shot.csv", "r") as f:
-
+# with open("rec/data_p40.0_i2.0_d0.0.csv", "r") as f:
+# with open("rec/data_p20.0_i0.6_d15.0.csv", "r") as f:
+# with open("rec/data_p20.0_i0.5_d15.0.csv", "r") as f:
+# with open("rec/shot_p25.0_i0.5_d15.0.csv", "r") as f:
+# with open("rec/data_p80.0_i4.0_d15.0.csv", "r") as f:
+# with open("rec/data_p80.0_i6.0_d15.0.csv", "r") as f:
+# with open("rec/data_p100.0_i4.0_d15.0.csv", "r") as f:
+# with open("rec/data_p100.0_i3.0_d15.0.csv", "r") as f:
+# with open("rec/data_p150.0_i3.0_d50.0.csv", "r") as f:
+# with open("rec/data_p150.0_i4.0_d20.0.csv", "r") as f:
+# with open("rec/data_p100.0_i4.0_d20.0.csv", "r") as f:
+# with open("rec/data_p70.0_i5.0_d20.0.csv", "r") as f:
+# with open("rec/1-then-3-perc-heater_cooldown_only", "r") as f:
+# with open("rec/const_1perc", "r") as f:  # max 93
+# with open("rec/cold_boot_100perc_heater", "r") as f:  # max 95
+# with open("rec/data_p11.0_i38.0_d9.5_test.csv", "r") as f:
+# with open("rec/data_p11.0_i3.0_d9.5.csv", "r") as f:
+# with open("rec/data_p11.0_i3.0_d9.5_sens_avg.csv", "r") as f:
+# with open("rec/data_p100.0_i1.0_d0.0.csv", "r") as f:
+# with open("rec/data_p50.0_i1.0_d0.0.csv", "r") as f:
+# with open("rec/data_p50.0_i1.5_d0.0.csv", "r") as f:
+# with open("rec/data_p25.0_i1.0_d0.0.csv", "r") as f:
+# with open("rec/data_p25.0_i0.6_d0.0.csv", "r") as f:
+# with open("rec/data_p25.0_i0.4_d10.0.csv", "r") as f:
+# with open("rec/data_p25.0_i0.4_d10.0_wasserspiele.csv", "r") as f:
+# with open("rec/data_p25.0_i0.4_d10.0_limited_5.csv", "r") as f:
+# with open("rec/data_p25.0_i0.4_d10.0_limited_5_shot.csv", "r") as f:
+# with open("rec/data_p25.0_i0.7_d20.0_incomplete.csv", "r") as f:
+with open("rec/CoolTerm Capture 2018-06-02 18-38-52.txt", "r") as f:  # wasserspiel - 1 shot - cleaning-flush - lange nichts
     for line in f:
         myline = f.readline()
         # print(myline)
