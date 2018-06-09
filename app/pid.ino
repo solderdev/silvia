@@ -144,17 +144,17 @@ static void pid_task(void * pvParameters)
 
         if (SSRCTRL_get_pwm_pump() == 0)
         {
-          if (u_limited > 5 && pv >= target_temp)
+          if (u_limited > 5 && pv >= target_temp + 0.5)
             u_limited = 5;
-          if (u_limited > 10 && fabsf(e) < 1)
-            u_limited = 10;
-          if (u_limited > 15 && fabsf(e) < 4)
-            u_limited = 15;
+//          if (u_limited > 10 && fabsf(e) < 1)
+//            u_limited = 10;
+//          if (u_limited > 15 && fabsf(e) < 4)
+//            u_limited = 15;
         }
-        // else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 40)
-        // {
-        //   u_limited = 40;
-        // }
+        else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 20 && e > 0)
+        {
+          u_limited = 20;
+        }
         
         if (u_limited < 0)
           u_limited = 0;
