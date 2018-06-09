@@ -28,7 +28,7 @@ void setup()
   SSRCTRL_setup();
   SHOT_setup();
   PREHEAT_setup();
-  if (PID_setup(25, 0.7, 20, 1000))  // P, I, D, t_s   
+  if (PID_setup(27, 1, 0, 1000))  // P, I, D, t_s   
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
@@ -105,9 +105,9 @@ void loop()
   else if (BTN_getButtonStatePower() == false)
     power_trigger_available = 1;
 
-  if (power_state != 0 && power_state + 30u * 60u * 1000u < millis())
+  if (power_state != 0 && power_state + 50u * 60u * 1000u < millis())
   {
-    // on for more than 30 min
+    // on for more than 50 min
     Serial.println("AUTO powering DOWN!");
     power_state = 0;
     PID_stop();
