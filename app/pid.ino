@@ -2,6 +2,7 @@
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 #include "Arduino.h"
+#include "pid.h"
 
 
 #define PID_TASK_STACKSIZE  2000u  // [words]
@@ -15,6 +16,7 @@ static float kI = 0.0f;
 static float kD = 0.0f;
 static uint32_t pid_ts = 0;  // [ms] update interval
 static float target_temp = 0.0f;  // [deg-C] target boiler temperature
+static PID_Mode_t target_mode = PID_MODE_WATER;
 static uint8_t pid_u1 = 0;  // last output value
 static float pid_pv1 = 0.0f;  // last process value (temperature)
 static float pid_pv2 = 0.0f;  // second to last process value (temperature)
@@ -82,12 +84,14 @@ void PID_stop(void)
   Serial.println("PID controller OFF!");
 }
 
-void PID_setTargetTemp(float temp)
+void PID_setTargetTemp(float temp, PID_Mode_t mode)
 {
   if (temp > PID_MIN_TEMP && temp < PID_MAX_TEMP)
     target_temp = temp;
   else
     target_temp = PID_MIN_TEMP;
+
+  target_mode = mode;
 }
 
 float PID_getTargetTemp(void)
@@ -121,7 +125,11 @@ static void pid_task(void * pvParameters)
       if (pid_enabled == true)
       {
         // Serial.println("PID running at " + String(millis()));
-        pv = SENSORS_get_temp_boiler_avg();  // SENSORS_get_temp_boiler_max();
+        if (target_mode == PID_MODE_WATER)
+          pv = SENSORS_get_temp_boiler_avg();
+        else
+          pv = SENSORS_get_temp_boiler_max();
+          
         e = target_temp - pv;
     
         // PID type C
@@ -222,4 +230,3 @@ static void pid_task(void * pvParameters)
     }  // end of sem take
   }  // end of while(1)
 }
-

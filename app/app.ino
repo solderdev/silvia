@@ -4,6 +4,7 @@
  * upload speed: 921600 b
  */
 #include "private_defines.h"
+#include "pid.h"
 
 //int LED_BUILTIN = 2;
 #define PIN_LED_GREEN  25
@@ -171,9 +172,9 @@ void loop()
   }
   
   if (BTN_getSwitchStateSteam() == true && BTN_getSwitchStateCoffee() == false)
-    PID_setTargetTemp(STEAM_TEMP_DEFAULT);
+    PID_setTargetTemp(STEAM_TEMP_DEFAULT, PID_MODE_STEAM);
   else
-    PID_setTargetTemp(BREW_TEMP_DEFAULT);
+    PID_setTargetTemp(BREW_TEMP_DEFAULT, PID_MODE_WATER);
   
   //DISPLAY_service();
 
@@ -249,4 +250,3 @@ void loop()
 //  //  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
 //  //  delay(1000);                       // wait for a second
 //}
-
