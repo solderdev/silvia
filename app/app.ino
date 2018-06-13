@@ -132,7 +132,7 @@ void loop()
     // coffee switch on and ready to brew
     if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
     {
-      SHOT_start(300, 3000, 2000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+      SHOT_start(300, 3000, 3000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
     }
     else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
     {
