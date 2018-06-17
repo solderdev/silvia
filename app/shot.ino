@@ -18,6 +18,8 @@ static uint32_t shot_time_ramp_ms = 0;       // ms - ramp duration from start-pe
 static uint8_t shot_pump_start_percent = 0;  // % - start of ramp
 static uint8_t shot_pump_stop_percent = 0;   // % - stop of ramp (also part of ramp)
 static uint32_t shot_time_pause_ms = 0;      // ms - pause after ramp with 0% pump
+static uint32_t shot_start_time = 0;         // time-ms - start of current shot
+static uint32_t shot_stop_time = 0;         // time-ms - stop of current shot
 
 static TimerHandle_t shot_timer = NULL;
 
@@ -67,7 +69,19 @@ void SHOT_stop(bool valve, uint8_t pump_percent)
     shot_state = SHOT_OFF;
     SSRCTRL_set_state_valve(valve);
     SSRCTRL_set_pwm_pump(pump_percent);
+    shot_stop_time = millis();
   }
+}
+
+uint32_t SHOT_getTimeOfShot(void)
+{
+  int32_t shot_time = shot_stop_time - shot_start_time;
+  if (shot_time > 0 && shot_time < 100u * 1000)
+    return shot_time;  // return stop-start time if below 100 seconds
+  else if (shot_time < 0 && millis() - shot_start_time < 100u * 1000)
+    return millis() - shot_start_time;  // return time of unfinished shot
+  else
+    return 0;  // shot longer 100s
 }
 
 // start: enable valve
@@ -114,6 +128,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
         {
           // go directly to 100%
           shot_state = SHOT_100PERCENT;
+          shot_start_time = millis();
           SSRCTRL_set_pwm_pump(100);
         }
         break;
@@ -126,6 +141,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
     case SHOT_PAUSE:
       // pause done - continue with 100%
       shot_state = SHOT_100PERCENT;
+      shot_start_time = millis();
       SSRCTRL_set_pwm_pump(100);
       break;
       
@@ -137,6 +153,3 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
       break;
   }
 }
-
-
-
