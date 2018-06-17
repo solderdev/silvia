@@ -1,8 +1,9 @@
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <ArduinoOTA.h>
 
-#define WIFI_TASK_STACKSIZE  2000u  // [words]
+#define WIFI_TASK_STACKSIZE  4000u  // [words]
 #define WIFI_TASK_PRIORITY   2      // idle: 0, main-loop: 1, wifi: 2, pid: 5, sensors: 4
 #define WIFI_BUFFER_SIZE     120    // number of saved samples
 
@@ -66,9 +67,38 @@ static void wifi_task(void * pvParameters)
 
   server.begin();
 
+  // over-the-air update:
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+  ArduinoOTA.begin();
+
   while (1)
   {
     WIFI_service();
+    ArduinoOTA.handle();
     vTaskDelay(pdMS_TO_TICKS(57));
   }
 }
