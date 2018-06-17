@@ -21,7 +21,7 @@ static uint8_t wifi_buffer_perc_pump[WIFI_BUFFER_SIZE];
 static float wifi_buffer_pid_p[WIFI_BUFFER_SIZE];
 static float wifi_buffer_pid_i[WIFI_BUFFER_SIZE];
 static float wifi_buffer_pid_d[WIFI_BUFFER_SIZE];
-static int32_t wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
+static float wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
 
 WiFiServer server(80);
 
@@ -81,7 +81,7 @@ void WIFI_addToBuffer(float temp_top,
                       float pid_p,
                       float pid_i,
                       float pid_d,
-                      int32_t pid_u)
+                      float pid_u)
 {
   // go to next slot in buffer
   wifi_buffer_idx_current += 1;

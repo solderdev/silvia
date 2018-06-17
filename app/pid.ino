@@ -17,7 +17,7 @@ static float kD = 0.0f;
 static uint32_t pid_ts = 0;  // [ms] update interval
 static float target_temp = 0.0f;  // [deg-C] target boiler temperature
 static PID_Mode_t target_mode = PID_MODE_WATER;
-static uint8_t pid_u1 = 0;  // last output value
+static float pid_u1 = 0;  // last output value
 static float pid_pv1 = 0.0f;  // last process value (temperature)
 static float pid_pv2 = 0.0f;  // second to last process value (temperature)
 static bool pid_enabled = false;
@@ -66,7 +66,7 @@ void PID_start(void)
 {
   pid_pv2 = SENSORS_get_temp_boiler_avg();
   pid_pv1 = SENSORS_get_temp_boiler_avg();
-  pid_u1 = 0;
+  pid_u1 = 0.0f;
   
   SSRCTRL_sync();
   xTimerReset(pid_timer_update, 0);
@@ -108,7 +108,7 @@ static void pid_timer_cb(TimerHandle_t pxTimer)
 static void pid_task(void * pvParameters)
 {
   float pv, e;
-  int32_t u, u_limited;
+  float u, u_limited;
   float p_share, i_share, d_share;
   //bool test_done = false;
   (void)pvParameters;
@@ -136,7 +136,7 @@ static void pid_task(void * pvParameters)
         p_share = kP * (pid_pv1 - pv);
         i_share = kI * ((float)(pid_ts)/1000.0f) * e;
         d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
-        u = lroundf(pid_u1 + p_share + i_share + d_share);
+        u = pid_u1 + p_share + i_share + d_share;
         
         //u = lroundf(
         //    pid_u1
@@ -169,7 +169,7 @@ static void pid_task(void * pvParameters)
         else if (u_limited > 100)
           u_limited = 100;
           
-        SSRCTRL_set_pwm_heater(u_limited);
+        SSRCTRL_set_pwm_heater(lroundf(u_limited));
     
         // for ziegler-nicholds
     //    if (target_temp < 100)
