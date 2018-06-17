@@ -11,7 +11,7 @@
 #define LED_ON     digitalWrite(PIN_LED_GREEN, HIGH)
 #define LED_OFF    digitalWrite(PIN_LED_GREEN, LOW)
 
-#define BREW_TEMP_DEFAULT   98.0f
+#define BREW_TEMP_DEFAULT   99.0f
 #define STEAM_TEMP_DEFAULT  118.0f
 
 uint32_t lastmilli = 0;
