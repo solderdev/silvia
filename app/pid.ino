@@ -17,7 +17,7 @@ static float kD = 0.0f;
 static uint32_t pid_ts = 0;  // [ms] update interval
 static float target_temp = 0.0f;  // [deg-C] target boiler temperature
 static PID_Mode_t target_mode = PID_MODE_WATER;
-static float pid_u1 = 0;  // last output value
+static float pid_u1 = 0.0f;   // last output value
 static float pid_pv1 = 0.0f;  // last process value (temperature)
 static float pid_pv2 = 0.0f;  // second to last process value (temperature)
 static bool pid_enabled = false;
@@ -117,7 +117,7 @@ static void pid_task(void * pvParameters)
   {
     // wait until the new PID-update is almost ready
     // update temperatures shortly before
-    vTaskDelay(pdMS_TO_TICKS(pid_ts - 50));
+    vTaskDelay(pdMS_TO_TICKS(pid_ts - 120));  // 100 iterations * 1ms + 7-8ms for the readings + safety
     SENSORS_update();
     
     if (xSemaphoreTake(pid_sem_update, portMAX_DELAY) == pdTRUE)
