@@ -27,17 +27,33 @@
     						document.getElementsByClassName("reading")[count].innerHTML =
     					  this.responseXML.getElementsByTagName('reading')[count].childNodes[0].nodeValue;
     					}
+              num_an = this.responseXML.getElementsByTagName('status').length;
+              for (count = 0; count < num_an; count++) {
+                document.getElementsByClassName("status")[count].innerHTML =
+                this.responseXML.getElementsByTagName('status')[count].childNodes[0].nodeValue;
+              }
+              DisplayCurrentTime();
     				}
     			}
       	}
       	// Send HTTP GET request to get the latest sensor readings
       	request.open("GET", "?update_readings" + nocache, true);
       	request.send(null);
-        DisplayCurrentTime();
         setTimeout('GetReadings()', 1000);
-      }
+      };
+      function powerOnButtonFunction() {
+        nocache = "&nocache";
+        var request = new XMLHttpRequest();
+        request.open("POST", "turn_silvia_on" + nocache, true);
+        request.send(null);
+      };
+      function powerOffButtonFunction() {
+        nocache = "&nocache";
+        var request = new XMLHttpRequest();
+        request.open("POST", "turn_silvia_off" + nocache, true);
+        request.send(null);
+      };
       document.addEventListener('DOMContentLoaded', function() {
-        DisplayCurrentTime();
         GetReadings();
       }, false);
     </script>
@@ -48,7 +64,6 @@
       }
       table {
         border-collapse: collapse;
-        width:60%;
         margin-left:auto;
         margin-right:auto;
       }
@@ -67,6 +82,7 @@
       td {
         border: none;
         padding: 16px;
+        width:100px;
       }
       .sensor {
         color:white;
@@ -79,6 +95,7 @@
   <body>
     <h1>Silvia</h1>
     <h3>Last update: <span id="currentTime"></span></h3>
+    <p>Status: <span class="status">...</span></p>
     <table>
       <tr>
         <th>SENSOR</th>
@@ -101,5 +118,7 @@
         <td><span class="reading">...</span> s</td>
       </tr>
     </table>
+    <button onclick="powerOnButtonFunction()">Power On</button>
+    <button onclick="powerOffButtonFunction()">Power Off</button>
   </body>
 </html>

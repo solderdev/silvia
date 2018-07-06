@@ -24,7 +24,7 @@ static float wifi_buffer_pid_i[WIFI_BUFFER_SIZE];
 static float wifi_buffer_pid_d[WIFI_BUFFER_SIZE];
 static float wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
 
-WiFiServer server(80);
+WiFiServer server(80);  // TODO maybe port to WebServer when more stable?
 
 static TaskHandle_t wifi_task_handle = NULL;
 
@@ -159,6 +159,8 @@ void WIFI_service(void)
       // new data available to read
       char c = client.read(); // read 1 byte (character) from client
       header += c;
+      if (0)
+        Serial.print(c);  // print the received requests
       // if the current line is blank, you got two newline characters in a row.
       // that's the end of the client HTTP request, so send a response:
       if (c == '\n' && currentLineIsBlank)
@@ -176,6 +178,16 @@ void WIFI_service(void)
           client.println();
           // Send XML file with sensor readings
           sendXMLFile(client);
+        }
+        else if (header.indexOf("turn_silvia_on") >= 0)
+        {
+          Serial.println("received command to turn on!");
+          PWR_powerOn();
+        }
+        else if (header.indexOf("turn_silvia_off") >= 0)
+        {
+          Serial.println("received command to turn off!");
+          PWR_powerOff();
         }
         // When the client connects for the first time, send it the index.html file
         else
@@ -208,56 +220,6 @@ void WIFI_service(void)
   // Close the connection
   client.stop();
   Serial.println("Client disconnected.");
-
-//  // Read the first line of the request
-//  String request = client.readStringUntil('\r');
-//                   Serial.println(request);
-//                   client.flush();
-//                   // Return the response
-//                   client.println("HTTP/1.1 200 OK");
-//                   client.println("Content-Type: text/html");
-//                   client.println(""); //  do not forget this one
-//                   client.println("<!DOCTYPE HTML>");
-//                   client.println("<html>");
-//                   client.println("<head>");
-//                   client.println("<!--Load the AJAX API-->");
-//                   client.println("<script type=\"text/javascript\" src=\"https://www.gstatic.com/charts/loader.js\"></script>");
-//                   client.println("<script type=\"text/javascript\">");
-//                   client.println("google.charts.load('current', {'packages':['corechart']});");
-//                   client.println("google.charts.setOnLoadCallback(drawChart);");
-//                   client.println("function drawChart() {");
-//                   client.println("var data = new google.visualization.DataTable();");
-//                   client.println("data.addColumn('string', 'Topping');");
-//                   client.println("data.addColumn('number', 'Slices');");
-//                   client.println("data.addRows([");
-//                   client.print("['Temp Top', ");
-//                   client.print(SENSORS_get_temp_boiler_top(), 2);
-//                   client.print("],\n");
-//                   client.print("['Temp Side', ");
-//                   client.print(SENSORS_get_temp_boiler_side(), 2);
-//                   client.print("],\n");
-//                   client.print("['Temp Brewhead', ");
-//                   client.print(SENSORS_get_temp_brewhead(), 2);
-//                   client.print("],\n");
-//                   client.print("['u', ");
-//                   client.print(SSRCTRL_get_pwm_heater());
-//                   client.print("],\n");
-//                   client.println("]);");
-//                   client.println("var options = {'title':'How Much Pizza I Ate Last Night',");
-//                   client.println("'width':400,");
-//                   client.println("'height':300};");
-//                   client.println("var chart = new google.visualization.PieChart(document.getElementById('chart_div'));");
-//                   client.println("chart.draw(data, options);");
-//                   client.println("}");
-//                   client.println("</script>");
-//                   client.println("</head>");
-//                   client.println("<body>");
-//                   client.println("<!--Div that will hold the pie chart-->");
-//                   client.println("<div id=\"chart_div\"></div>");
-//                   client.println("</body>");
-//                   client.println("</html>");
-//                   //vTaskDelay(pdMS_TO_TICKS(1));
-//                   Serial.println("Client disonnected\n");
 }
 
 // Send XML file with the latest sensor readings
@@ -282,6 +244,13 @@ static void sendXMLFile(WiFiClient cl)
   cl.print("<reading>");
   cl.print(SHOT_getTimeOfShot() / 1000.0f);
   cl.println("</reading>");
+  
+  cl.print("<status>");
+  if (PWR_isPoweredOn())
+    cl.print("ON");
+  else
+    cl.print("OFF");
+  cl.println("</status>");
   
   cl.print("</inputs>");
 }
@@ -316,16 +285,32 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("document.getElementsByClassName(\"reading\")[count].innerHTML =");
   cl.println("this.responseXML.getElementsByTagName('reading')[count].childNodes[0].nodeValue;");
   cl.println("}");
+  cl.println("num_an = this.responseXML.getElementsByTagName('status').length;");
+  cl.println("for (count = 0; count < num_an; count++) {");
+  cl.println("document.getElementsByClassName(\"status\")[count].innerHTML =");
+  cl.println("this.responseXML.getElementsByTagName('status')[count].childNodes[0].nodeValue;");
+  cl.println("}");
+  cl.println("DisplayCurrentTime();");
   cl.println("}");
   cl.println("}");
   cl.println("}");
   cl.println("request.open(\"GET\", \"?update_readings\" + nocache, true);");
   cl.println("request.send(null);");
-  cl.println("DisplayCurrentTime();");
   cl.println("setTimeout('GetReadings()', 1000);");
-  cl.println("}");
+  cl.println("};");
+  cl.println("function powerOnButtonFunction() {");
+  cl.println("nocache = \"&nocache\";");
+  cl.println("var request = new XMLHttpRequest();");
+  cl.println("request.open(\"POST\", \"turn_silvia_on\" + nocache, true);");
+  cl.println("request.send(null);");
+  cl.println("};");
+  cl.println("function powerOffButtonFunction() {");
+  cl.println("nocache = \"&nocache\";");
+  cl.println("var request = new XMLHttpRequest();");
+  cl.println("request.open(\"POST\", \"turn_silvia_off\" + nocache, true);");
+  cl.println("request.send(null);");
+  cl.println("};");
   cl.println("document.addEventListener('DOMContentLoaded', function() {");
-  cl.println("DisplayCurrentTime();");
   cl.println("GetReadings();");
   cl.println("}, false);");
   cl.println("</script>");
@@ -336,7 +321,6 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("}");
   cl.println("table {");
   cl.println("border-collapse: collapse;");
-  cl.println("width:60%;");
   cl.println("margin-left:auto;");
   cl.println("margin-right:auto;");
   cl.println("}");
@@ -355,6 +339,7 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("td {");
   cl.println("border: none;");
   cl.println("padding: 16px;");
+  cl.println("width:100px;");
   cl.println("}");
   cl.println(".sensor {");
   cl.println("color:white;");
@@ -367,6 +352,7 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("<body>");
   cl.println("<h1>Silvia</h1>");
   cl.println("<h3>Last update: <span id=\"currentTime\"></span></h3>");
+  cl.println("<p>Status: <span class=\"status\">...</span></p>");
   cl.println("<table>");
   cl.println("<tr>");
   cl.println("<th>SENSOR</th>");
@@ -389,6 +375,8 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("<td><span class=\"reading\">...</span> s</td>");
   cl.println("</tr>");
   cl.println("</table>");
+  cl.println("<button onclick=\"powerOnButtonFunction()\">Power On</button>");
+  cl.println("<button onclick=\"powerOffButtonFunction()\">Power Off</button>");
   cl.println("</body>");
   cl.println("</html>");
 }
