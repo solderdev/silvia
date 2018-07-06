@@ -15,6 +15,7 @@
 #define STEAM_TEMP_DEFAULT  118.0f
 
 uint32_t lastmilli = 0;
+static uint32_t power_state = 0;
 
 void setup()
 {
@@ -45,7 +46,6 @@ void loop()
 //  static int percent_p_test = 0;
   static uint8_t led_state = 1;
   static uint8_t power_trigger_available = 1;
-  static uint32_t power_state = 0;
   
   if (millis() - lastmilli > 500 )
   {
@@ -89,92 +89,84 @@ void loop()
     power_trigger_available = 0;
     
     if (power_state)
-    {
-      Serial.println("powering DOWN!");
-      power_state = 0;
-      PID_stop();
-      SSRCTRL_off();
-    }
+      PWR_powerOff();
     else
-    {
-      Serial.println("powering UP!");
-      power_state = millis();
-      PID_start();
-      SSRCTRL_on();
-    }
+      PWR_powerOn();
   }
   else if (BTN_getButtonStatePower() == false)
     power_trigger_available = 1;
 
+  // auto power-down
   if (power_state != 0 && power_state + 50u * 60u * 1000u < millis())
   {
     // on for more than 50 min
-    Serial.println("AUTO powering DOWN!");
-    power_state = 0;
-    PID_stop();
-    SSRCTRL_off();
+    Serial.print("AUTO ");
+    PWR_powerOff();
   }
 
-  // Coffee  Water  Steam
-  // ---------------------
-  //    0      0      0    all off
-  //    0      0      1    temp: steam
-  //    0      1      1    temp: steam, pump 50%
-  //    0      1      0    pump 50%
-  //    1      0      0    start shot
-  //    1      1      0    valve open, pump 100%
-  //    1      1      1    start preheat
-
-  if (BTN_getSwitchStateCoffee() == true && SENSORS_get_temp_boiler_side() < 110)
+  if (power_state)
   {
-    power_state = millis();  // re-set power-off timer
-    
-    // coffee switch on and ready to brew
-    if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
-    {
-      SHOT_start(300, 3000, 3000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
-    }
-    else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
-    {
-      SHOT_stop(true, 100);
-      PREHEAT_stop(true, 100);
-      SSRCTRL_set_state_valve(true);
-      SSRCTRL_set_pwm_pump(100);
-    }
-    else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == true)
-    {
-      //preheat: valve open - 100% pump (2s) - valve close - delay (800ms) - 0% pump .. repeat every 10s
-      SHOT_stop(true, 100);
-      PREHEAT_start(2000, 800, 10000);  // ms 100% pump , ms build pressure, ms pause)
-    }
-  }
-  else if (BTN_getSwitchStateCoffee() == false)
-  {
-    // coffe switch off:
-    // close valve, stop shot/preheat if active
-    SHOT_stop(false, 0);
-    PREHEAT_stop(false, 0);
-    SSRCTRL_set_state_valve(false);
-    if (BTN_getSwitchStateWater() == true)
+    // Coffee  Water  Steam
+    // ---------------------
+    //    0      0      0    all off
+    //    0      0      1    temp: steam
+    //    0      1      1    temp: steam, pump 50%
+    //    0      1      0    pump 50%
+    //    1      0      0    start shot
+    //    1      1      0    valve open, pump 100%
+    //    1      1      1    start preheat
+  
+    if (BTN_getSwitchStateCoffee() == true && SENSORS_get_temp_boiler_side() < 110)
     {
       power_state = millis();  // re-set power-off timer
-      SSRCTRL_set_pwm_pump(50);
+      
+      // coffee switch on and ready to brew
+      if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
+      {
+        SHOT_start(300, 3000, 3000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+      }
+      else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
+      {
+        SHOT_stop(true, 100);
+        PREHEAT_stop(true, 100);
+        SSRCTRL_set_state_valve(true);
+        SSRCTRL_set_pwm_pump(100);
+      }
+      else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == true)
+      {
+        //preheat: valve open - 100% pump (2s) - valve close - delay (800ms) - 0% pump .. repeat every 10s
+        SHOT_stop(true, 100);
+        PREHEAT_start(2000, 800, 10000);  // ms 100% pump , ms build pressure, ms pause)
+      }
+    }
+    else if (BTN_getSwitchStateCoffee() == false)
+    {
+      // coffe switch off:
+      // close valve, stop shot/preheat if active
+      SHOT_stop(false, 0);
+      PREHEAT_stop(false, 0);
+      SSRCTRL_set_state_valve(false);
+      if (BTN_getSwitchStateWater() == true)
+      {
+        power_state = millis();  // re-set power-off timer
+        SSRCTRL_set_pwm_pump(50);
+      }
+      else
+        SSRCTRL_set_pwm_pump(0);
     }
     else
+    {
+      SHOT_stop(false, 0);
+      PREHEAT_stop(false, 0);
+      SSRCTRL_set_state_valve(false);
       SSRCTRL_set_pwm_pump(0);
-  }
-  else
-  {
-    SHOT_stop(false, 0);
-    PREHEAT_stop(false, 0);
-    SSRCTRL_set_state_valve(false);
-    SSRCTRL_set_pwm_pump(0);
-  }
-  
-  if (BTN_getSwitchStateSteam() == true && BTN_getSwitchStateCoffee() == false)
-    PID_setTargetTemp(STEAM_TEMP_DEFAULT, PID_MODE_STEAM);
-  else
-    PID_setTargetTemp(BREW_TEMP_DEFAULT, PID_MODE_WATER);
+    }
+    
+    if (BTN_getSwitchStateSteam() == true && BTN_getSwitchStateCoffee() == false)
+      PID_setTargetTemp(STEAM_TEMP_DEFAULT, PID_MODE_STEAM);
+    else
+      PID_setTargetTemp(BREW_TEMP_DEFAULT, PID_MODE_WATER);
+  } /* if power_state */
   
   //DISPLAY_service();
 
@@ -184,6 +176,27 @@ void loop()
 //    Serial.println("CCW");
 
   yield();
+}
+
+void PWR_powerOn(void)
+{
+  Serial.println("powering UP!");
+  power_state = millis();
+  PID_start();
+  SSRCTRL_on();
+}
+
+void PWR_powerOff(void)
+{
+  Serial.println("powering DOWN!");
+  power_state = 0;
+  PID_stop();
+  SSRCTRL_off();
+}
+
+uint32_t PWR_isPoweredOn(void)
+{
+  return power_state;
 }
  
 
