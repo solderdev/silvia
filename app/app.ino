@@ -67,7 +67,7 @@ void loop()
     }
     else if (SENSORS_get_temp_boiler_avg() < PID_getTargetTemp()-1 ||
              SENSORS_get_temp_boiler_avg() > PID_getTargetTemp()+1 ||
-             SENSORS_get_temp_brewhead() < 80)
+             SENSORS_get_temp_brewhead() < 85)
     {
       // temperature not optimal
       if (led_state)

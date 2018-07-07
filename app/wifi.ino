@@ -238,6 +238,10 @@ static void sendXMLFile(WiFiClient cl)
   cl.println("</reading>");
   
   cl.print("<reading>");
+  cl.print((wifi_buffer_temp_side[wifi_buffer_idx_current] + wifi_buffer_temp_top[wifi_buffer_idx_current]) / 2);
+  cl.println("</reading>");
+  
+  cl.print("<reading>");
   cl.print(wifi_buffer_temp_brewhead[wifi_buffer_idx_current]);
   cl.println("</reading>");
   
@@ -339,7 +343,6 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("td {");
   cl.println("border: none;");
   cl.println("padding: 16px;");
-  cl.println("width:100px;");
   cl.println("}");
   cl.println(".sensor {");
   cl.println("color:white;");
@@ -355,8 +358,8 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("<p>Status: <span class=\"status\">...</span></p>");
   cl.println("<table>");
   cl.println("<tr>");
-  cl.println("<th>SENSOR</th>");
-  cl.println("<th>VALUE</th>");
+  cl.println("<th width=130px>SENSOR</th>");
+  cl.println("<th width=100px>VALUE</th>");
   cl.println("</tr>");
   cl.println("<tr>");
   cl.println("<td><span class=\"sensor\">Top</span></td>");
@@ -367,7 +370,11 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("<td><span class=\"reading\">...</span> *C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
-  cl.println("<td><span class=\"sensor\">Brewhead</span></td>");
+  cl.println("<td><span class=\"sensor\">Average (99)</span></td>");
+  cl.println("<td><span class=\"reading\">...</span> *C</td>");
+  cl.println("</tr>");
+  cl.println("<tr>");
+  cl.println("<td><span class=\"sensor\">Brewhead (90)</span></td>");
   cl.println("<td><span class=\"reading\">...</span> *C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
