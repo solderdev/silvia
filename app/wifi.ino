@@ -142,6 +142,7 @@ void WIFI_service(void)
   // Variable to store the HTTP request
   String header = "";
   boolean currentLineIsBlank = true;
+  uint32_t time_connected;
   
   // Check if a client has connected
   WiFiClient client = server.available();
@@ -150,7 +151,10 @@ void WIFI_service(void)
 
   // Wait until the client sends some data
   Serial.println("new client");
-  while (client.connected())
+  time_connected = millis();
+
+  // set a timeout of 10s - then kick the client..
+  while (client.connected() && (millis() < time_connected + 10000))
   {
     if (!client.available())
       vTaskDelay(pdMS_TO_TICKS(1));
