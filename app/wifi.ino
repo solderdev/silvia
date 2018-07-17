@@ -250,6 +250,10 @@ static void sendXMLFile(WiFiClient cl)
   cl.println("</reading>");
   
   cl.print("<reading>");
+  cl.print(wifi_buffer_perc_heater[wifi_buffer_idx_current]);
+  cl.println("</reading>");
+  
+  cl.print("<reading>");
   cl.print(SHOT_getTimeOfShot() / 1000.0f);
   cl.println("</reading>");
   
@@ -367,19 +371,23 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("</tr>");
   cl.println("<tr>");
   cl.println("<td><span class=\"sensor\">Top</span></td>");
-  cl.println("<td><span class=\"reading\">...</span> *C</td>");
+  cl.println("<td><span class=\"reading\">...</span> &deg;C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
   cl.println("<td><span class=\"sensor\">Side</span></td>");
-  cl.println("<td><span class=\"reading\">...</span> *C</td>");
+  cl.println("<td><span class=\"reading\">...</span> &deg;C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
   cl.println("<td><span class=\"sensor\">Average (99)</span></td>");
-  cl.println("<td><span class=\"reading\">...</span> *C</td>");
+  cl.println("<td><span class=\"reading\">...</span> &deg;C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
   cl.println("<td><span class=\"sensor\">Brewhead (90)</span></td>");
-  cl.println("<td><span class=\"reading\">...</span> *C</td>");
+  cl.println("<td><span class=\"reading\">...</span> &deg;C</td>");
+  cl.println("</tr>");
+  cl.println("<tr>");
+  cl.println("<td><span class=\"sensor\">Heater</span></td>");
+  cl.println("<td><span class=\"reading\">...</span> &#37;</td>");
   cl.println("</tr>");
   cl.println("<tr>");
   cl.println("<td><span class=\"sensor\">Shot Time</span></td>");
