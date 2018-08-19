@@ -25,7 +25,7 @@
 
 
 typedef struct SSR_Control {
-  TimerHandle_t timer_pwm;
+  hw_timer_t * timer_pwm;
   uint32_t time_current_state;
   bool target_state;
   bool current_state;
@@ -56,8 +56,9 @@ static uint8_t pwm_percent_heater[10] = {0};
 static uint8_t pwm_percent_heater_int = 0;
 
 
-static void heater_timer_cb(TimerHandle_t pxTimer);
-static void pump_timer_cb(TimerHandle_t pxTimer);
+static void IRAM_ATTR heater_timer_cb(void);
+static void IRAM_ATTR pump_timer_cb(void);
+
 static void safety_timer_cb(TimerHandle_t pxTimer);
 
 
@@ -77,14 +78,19 @@ uint8_t SSRCTRL_setup(void)
   SSRCTRL_off();
   
   // init PWM control timer
-  // heater: 50Hz -> whole sine: 20ms, half sine: 10ms
-  heater_ctrl.timer_pwm = xTimerCreate("tmr_ssr_h", pdMS_TO_TICKS(10), pdTRUE, NULL, heater_timer_cb);
-  // pump: 50Hz -> whole sine: 20ms - half sine not possible due to internal diode
-  pump_ctrl.timer_pwm = xTimerCreate("tmr_ssr_p", pdMS_TO_TICKS(20), pdTRUE, NULL, pump_timer_cb);
+  heater_ctrl.timer_pwm = timerBegin(0, 80, true);  // timer 0
+  pump_ctrl.timer_pwm = timerBegin(1, 80, true);  // timer 1
   if (heater_ctrl.timer_pwm == NULL || pump_ctrl.timer_pwm == NULL)
     return 1; // error
-  xTimerStart(heater_ctrl.timer_pwm, portMAX_DELAY);
-  xTimerStart(pump_ctrl.timer_pwm, portMAX_DELAY);
+  timerAttachInterrupt(heater_ctrl.timer_pwm, &heater_timer_cb, true);
+  timerAttachInterrupt(pump_ctrl.timer_pwm, &pump_timer_cb, true);
+  // heater: 50Hz -> whole sine: 20ms, half sine: 10ms
+  timerAlarmWrite(heater_ctrl.timer_pwm, 10000, true);
+  // pump: 50Hz -> whole sine: 20ms - half sine not possible due to internal diode
+  timerAlarmWrite(pump_ctrl.timer_pwm, 20000, true);
+  timerAlarmEnable(heater_ctrl.timer_pwm);
+  vTaskDelay(pdMS_TO_TICKS(5));  // keep timers apart
+  timerAlarmEnable(pump_ctrl.timer_pwm);
 
   // init safety timer
   timer_safety = xTimerCreate("tmr_safety", pdMS_TO_TICKS(997), pdTRUE, NULL, safety_timer_cb);
@@ -95,10 +101,9 @@ uint8_t SSRCTRL_setup(void)
   return 0;
 }
 
-static void heater_timer_cb(TimerHandle_t pxTimer)
+static void IRAM_ATTR heater_timer_cb(void)
 {
   static uint32_t period_counter = 0;  // 0 to 99 elapsed periods
-  (void)pxTimer;
   
   if (enabled != true)
     return;
@@ -112,10 +117,9 @@ static void heater_timer_cb(TimerHandle_t pxTimer)
     period_counter = 0;
 }
 
-static void pump_timer_cb(TimerHandle_t pxTimer)
+static void IRAM_ATTR pump_timer_cb(void)
 {
   static uint32_t period_counter = 0;  // elapsed periods
-  (void)pxTimer;
   
   if (enabled != true)
     return;
@@ -327,7 +331,7 @@ bool SSRCTRL_getState(void)
 
 void SSRCTRL_sync(void)
 {
-  xTimerReset(heater_ctrl.timer_pwm, 0);
+  timerRestart(heater_ctrl.timer_pwm);
 }
 
 void SSRCTRL_set_pwm_heater(uint8_t percent)
@@ -375,32 +379,44 @@ uint8_t SSRCTRL_get_pwm_heater(void)
 
 void SSRCTRL_set_pwm_pump(uint8_t percent)
 {
+  static uint32_t time_on = 0;
+  
   if (percent < 5)
+  {
+    if (pwm_percent_pump != PWM_PUMP_0_PERCENT && millis() - time_on > 3000)
+      PID_override(0.0f);
     pwm_percent_pump = PWM_PUMP_0_PERCENT;
-  else if (percent < 15)
-    pwm_percent_pump = PWM_PUMP_10_PERCENT;
-  else if (percent < 25)
-    pwm_percent_pump = PWM_PUMP_20_PERCENT;
-  else if (percent < 35)
-    pwm_percent_pump = PWM_PUMP_30_PERCENT;
-  else if (percent < 45)
-    pwm_percent_pump = PWM_PUMP_40_PERCENT;
-  else if (percent < 55)
-    pwm_percent_pump = PWM_PUMP_50_PERCENT;
-  else if (percent < 65)
-    pwm_percent_pump = PWM_PUMP_60_PERCENT;
-  else if (percent < 75)
-    pwm_percent_pump = PWM_PUMP_70_PERCENT;
-  else if (percent < 85)
-    pwm_percent_pump = PWM_PUMP_80_PERCENT;
-  else if (percent < 95)
-    pwm_percent_pump = PWM_PUMP_90_PERCENT;
-  else if (percent <= 100)
-    pwm_percent_pump = PWM_PUMP_100_PERCENT;
+  }
   else
   {
-    Serial.println("SSRctrl: pump pwm percent not valid!");
-    pwm_percent_pump = PWM_PUMP_0_PERCENT;
+    if (percent < 15)
+      pwm_percent_pump = PWM_PUMP_10_PERCENT;
+    else if (percent < 25)
+      pwm_percent_pump = PWM_PUMP_20_PERCENT;
+    else if (percent < 35)
+      pwm_percent_pump = PWM_PUMP_30_PERCENT;
+    else if (percent < 45)
+      pwm_percent_pump = PWM_PUMP_40_PERCENT;
+    else if (percent < 55)
+      pwm_percent_pump = PWM_PUMP_50_PERCENT;
+    else if (percent < 65)
+      pwm_percent_pump = PWM_PUMP_60_PERCENT;
+    else if (percent < 75)
+      pwm_percent_pump = PWM_PUMP_70_PERCENT;
+    else if (percent < 85)
+      pwm_percent_pump = PWM_PUMP_80_PERCENT;
+    else if (percent < 95)
+      pwm_percent_pump = PWM_PUMP_90_PERCENT;
+    else if (percent <= 100)
+      pwm_percent_pump = PWM_PUMP_100_PERCENT;
+    else
+    {
+      Serial.println("SSRctrl: pump pwm percent not valid!");
+      pwm_percent_pump = PWM_PUMP_0_PERCENT;
+      return;
+    }
+
+    time_on = millis();
   }
 }
 
@@ -439,4 +455,3 @@ void SSRCTRL_set_state_valve(bool enable)
   else
     SSR_VALVE_OFF();
 }
-
