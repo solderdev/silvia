@@ -32,7 +32,7 @@ void setup()
   SSRCTRL_setup();
   SHOT_setup();
   PREHEAT_setup();
-  if (PID_setup(27, 1, 0, 1000))  // P, I, D, t_s   
+  if (PID_setup(20, 1, 0, 1000))  // P, I, D, t_s   
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
@@ -126,7 +126,7 @@ void loop()
       // coffee switch on and ready to brew
       if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == false)
       {
-        SHOT_start(300, 3000, 3000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+        SHOT_start(300, 3000, 4000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
       }
       else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
       {
@@ -149,7 +149,7 @@ void loop()
       {
         //preheat: valve open - 100% pump (2s) - valve close - delay (800ms) - 0% pump .. repeat every 10s
         SHOT_stop(true, 100);
-        PREHEAT_start(2000, 800, 10000);  // ms 100% pump , ms build pressure, ms pause)
+        PREHEAT_start(1000, 800, 10000);  // ms 100% pump , ms build pressure, ms pause)
       }
     }
     else if (BTN_getSwitchStateCoffee() == false)
