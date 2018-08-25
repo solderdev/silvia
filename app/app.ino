@@ -32,7 +32,7 @@ void setup()
   SSRCTRL_setup();
   SHOT_setup();
   PREHEAT_setup();
-  if (PID_setup(20, 1, 0, 1000))  // P, I, D, t_s   
+  if (PID_setup(40, 1, 0, 1000))  // P, I, D, t_s   
     Serial.println("error init pid");
   if (BTN_setup())
     Serial.println("error init buttons");
