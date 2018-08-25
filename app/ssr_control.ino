@@ -209,7 +209,7 @@ static void IRAM_ATTR pump_timer_cb(void)
       break;
     default:
       SSR_PUMP_OFF();
-      Serial.println("SSRctrl: illegal pump PWM!");
+      //Serial.println("SSRctrl: illegal pump PWM!");
   }
 }
 

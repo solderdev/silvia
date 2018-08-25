@@ -8,6 +8,7 @@ typedef enum {
   SHOT_RAMP,
   SHOT_PAUSE,
   SHOT_100PERCENT,
+  SHOT_MANUAL,
   
 } SHOT_State_t;
 
@@ -19,7 +20,7 @@ static uint8_t shot_pump_start_percent = 0;  // % - start of ramp
 static uint8_t shot_pump_stop_percent = 0;   // % - stop of ramp (also part of ramp)
 static uint32_t shot_time_pause_ms = 0;      // ms - pause after ramp with 0% pump
 static uint32_t shot_start_time = 0;         // time-ms - start of current shot
-static uint32_t shot_stop_time = 0;         // time-ms - stop of current shot
+static uint32_t shot_stop_time = 0;          // time-ms - stop of current shot
 
 static TimerHandle_t shot_timer = NULL;
 
@@ -84,6 +85,14 @@ uint32_t SHOT_getTimeOfShot(void)
     return 0;  // shot longer 100s
 }
 
+void SHOT_manuallyStartShot(void)
+{
+  xTimerStop(shot_timer, portMAX_DELAY);
+  if (shot_state != SHOT_MANUAL)
+    shot_start_time = millis();
+  shot_state = SHOT_MANUAL;
+}
+
 // start: enable valve
 // ramp up pump from shot_pump_percent_start to 100% in shot_time_ramp seconds
 //   increment_duration = shot_time_ramp_ms / ((shot_pump_stop_percent - shot_pump_start_percent)/10)
@@ -146,6 +155,9 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
       break;
       
     case SHOT_100PERCENT:
+      break;
+
+    case SHOT_MANUAL:
       break;
       
     default:

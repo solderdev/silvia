@@ -14,6 +14,8 @@
 #define BREW_TEMP_DEFAULT   99.0f
 #define STEAM_TEMP_DEFAULT  118.0f
 
+#define PUMP_FILTER_DEFAULT  20
+
 uint32_t lastmilli = 0;
 static uint32_t power_state = 0;
 
@@ -114,6 +116,7 @@ void loop()
     //    0      1      0    pump 50%
     //    1      0      0    start shot
     //    1      1      0    valve open, pump 100%
+    //    1      0      1    valve open, pump x% (filter-coffee)
     //    1      1      1    start preheat
   
     if (BTN_getSwitchStateCoffee() == true && SENSORS_get_temp_boiler_side() < 110)
@@ -127,10 +130,20 @@ void loop()
       }
       else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == false)
       {
+        // water flush mode
         SHOT_stop(true, 100);
         PREHEAT_stop(true, 100);
         SSRCTRL_set_state_valve(true);
         SSRCTRL_set_pwm_pump(100);
+      }
+      else if (BTN_getSwitchStateWater() == false && BTN_getSwitchStateSteam() == true)
+      {
+        // filter-coffee mode
+        SHOT_stop(true, PUMP_FILTER_DEFAULT);
+        PREHEAT_stop(true, PUMP_FILTER_DEFAULT);
+        SSRCTRL_set_state_valve(true);
+        SSRCTRL_set_pwm_pump(PUMP_FILTER_DEFAULT);
+        SHOT_manuallyStartShot();
       }
       else if (BTN_getSwitchStateWater() == true && BTN_getSwitchStateSteam() == true)
       {
@@ -141,7 +154,7 @@ void loop()
     }
     else if (BTN_getSwitchStateCoffee() == false)
     {
-      // coffe switch off:
+      // coffee switch off:
       // close valve, stop shot/preheat if active
       SHOT_stop(false, 0);
       PREHEAT_stop(false, 0);
