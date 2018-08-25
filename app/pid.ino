@@ -20,6 +20,7 @@ static PID_Mode_t target_mode = PID_MODE_WATER;
 static float pid_u1 = 0.0f;   // last output value
 static float pid_pv1 = 0.0f;  // last process value (temperature)
 static float pid_pv2 = 0.0f;  // second to last process value (temperature)
+static float pid_u_override = -1.0f;  // override next PID iteration with this value if positive
 static bool pid_enabled = false;
 
 static SemaphoreHandle_t pid_sem_update = NULL;
@@ -81,7 +82,13 @@ void PID_start(void)
 void PID_stop(void)
 {
   pid_enabled = false;
+  SSRCTRL_set_pwm_heater(0);
   Serial.println("PID controller OFF!");
+}
+
+void PID_override(float u_override)
+{
+  pid_u_override = u_override;
 }
 
 void PID_setTargetTemp(float temp, PID_Mode_t mode)
@@ -163,13 +170,22 @@ static void pid_task(void * pvParameters)
         {
           u_limited = 20;
         }
+
+        // apply override value if activated
+        if (pid_u_override >= 0.0f)
+        {
+          u_limited = pid_u_override;
+          pid_u_override = -1.0f;
+        }
         
         if (u_limited < 0)
           u_limited = 0;
         else if (u_limited > 100)
           u_limited = 100;
-          
-        SSRCTRL_set_pwm_heater(lroundf(u_limited));
+
+        // check again, if we got interrupted (not perfect, but better)
+        if (pid_enabled == true)
+          SSRCTRL_set_pwm_heater(lroundf(u_limited));
     
         // for ziegler-nicholds
     //    if (target_temp < 100)
