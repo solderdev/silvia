@@ -141,6 +141,10 @@ static void pid_task(void * pvParameters)
     
         // PID type C
         p_share = kP * (pid_pv1 - pv);
+        if (p_share < -1)
+          p_share *= -1 * p_share;
+//        else
+//          p_share *= p_share;
         i_share = kI * ((float)(pid_ts)/1000.0f) * e;
         d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
         u = pid_u1 + p_share + i_share + d_share;
