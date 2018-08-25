@@ -103,7 +103,7 @@ static void SENSORS_update(void)
   uint64_t sum_side = 0, sum_top = 0, sum_brewhead = 0;
 
 //  uint32_t time_ = millis();
-  for (uint8_t i = 100; i; i--) // 100x3chan --> 7-8 ms + 1ms*100
+  for (uint8_t i = 100; i; i--) // 100x3chan --> 7-8 ms + 5ms*100
   {
     uint32_t voltage;
     esp_err_t error = ESP_OK;
@@ -118,7 +118,7 @@ static void SENSORS_update(void)
     if (error != ESP_OK)
       return;
 
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(5));
   }
   val_mV_boiler_side = sum_side / 100.0;
   val_mV_boiler_top = sum_top / 100.0;

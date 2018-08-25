@@ -117,7 +117,7 @@ static void pid_task(void * pvParameters)
   {
     // wait until the new PID-update is almost ready
     // update temperatures shortly before
-    vTaskDelay(pdMS_TO_TICKS(pid_ts - 120));  // 100 iterations * 1ms + 7-8ms for the readings + safety
+    vTaskDelay(pdMS_TO_TICKS(pid_ts - 520));  // 100 iterations * 5ms + 7-8ms for the readings + safety
     SENSORS_update();
     
     if (xSemaphoreTake(pid_sem_update, portMAX_DELAY) == pdTRUE)
