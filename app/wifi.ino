@@ -2,11 +2,15 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
+#include <InfluxDb.h>
+#include "private_defines.h"
 
+// idle: 0, main-loop: 1, wifi: 2, wifi_db: 3, pid: 5, sensors: 4
 #define WIFI_TASK_STACKSIZE  4000u  // [words]
-#define WIFI_TASK_PRIORITY   2      // idle: 0, main-loop: 1, wifi: 2, pid: 5, sensors: 4
+#define WIFI_TASK_PRIORITY   2
+#define WIFI_DB_TASK_STACKSIZE  4000u  // [words]
+#define WIFI_DB_TASK_PRIORITY   3
 #define WIFI_BUFFER_SIZE     120    // number of saved samples
-
 
 const char* ssid     = PRIVATE_SSID;     // your network SSID (name of wifi network)
 const char* password = PRIVATE_WIFIPW;   // your network password
@@ -26,7 +30,12 @@ static float wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
 
 WiFiServer server(80);  // TODO maybe port to WebServer when more stable?
 
+Influxdb influx(INFLUXDB_HOST);
+
 static TaskHandle_t wifi_task_handle = NULL;
+static TaskHandle_t wifi_db_task_handle = NULL;
+
+SemaphoreHandle_t wifi_influxdb_sem_update = NULL;
 
 static void wifi_task(void * pvParameters);
 static void sendXMLFile(WiFiClient cl);
@@ -39,6 +48,14 @@ void WIFI_setup(void)
     if (xTaskCreate(wifi_task, "task_wifi", WIFI_TASK_STACKSIZE, NULL, WIFI_TASK_PRIORITY, &wifi_task_handle) != pdPASS)
       return; // error
   }
+  // sync semaphore
+  if (wifi_influxdb_sem_update == NULL)
+  {
+    wifi_influxdb_sem_update = xSemaphoreCreateBinary();
+    if (wifi_influxdb_sem_update == NULL)
+      return; // error
+  }
+  influx.setDb("silvia");
 }
 
 static void wifi_task(void * pvParameters)
@@ -95,12 +112,34 @@ static void wifi_task(void * pvParameters)
     });
   ArduinoOTA.begin();
 
+  // start database task when WIFI is available
+  if (wifi_db_task_handle == NULL)
+  {
+    xTaskCreate(wifi_db_task, "task_db_wifi", WIFI_DB_TASK_STACKSIZE, NULL, WIFI_DB_TASK_PRIORITY, &wifi_db_task_handle);
+  }
+  
   while (1)
   {
     WIFI_service();
     ArduinoOTA.handle();
     vTaskDelay(pdMS_TO_TICKS(57));
   }
+}
+
+static void wifi_db_task(void * pvParameters)
+{
+  while(1)
+  {
+    if (xSemaphoreTake(wifi_influxdb_sem_update, portMAX_DELAY) == pdTRUE)
+    {
+      WIFI_sendInfluxDBdata();
+    }
+  }
+}
+
+void WIFI_updateInfluxDB(void)
+{
+  xSemaphoreGive(wifi_influxdb_sem_update);
 }
 
 void WIFI_addToBuffer(float temp_top,
@@ -137,6 +176,70 @@ void WIFI_resetBuffer(void)
   wifi_buffer_idx_current = WIFI_BUFFER_SIZE - 1;
 }
 
+//void WIFI_sendInfluxDBdata(float temp_top,
+//                           float temp_side,
+//                           float temp_brewhead,
+//                           uint8_t perc_heater,
+//                           uint8_t perc_pump,
+//                           float pid_p,
+//                           float pid_i,
+//                           float pid_d,
+//                           float pid_u)
+void WIFI_sendInfluxDBdata(void)
+{
+  InfluxData t1("temperature");
+  t1.addTag("pos", "top");
+  t1.addValue("value", wifi_buffer_temp_top[wifi_buffer_idx_current]);
+  influx.prepare(t1);
+  
+  InfluxData t2("temperature");
+  t2.addTag("pos", "side");
+  t2.addValue("value", wifi_buffer_temp_side[wifi_buffer_idx_current]);
+  influx.prepare(t2);
+  
+  InfluxData t3("temperature");
+  t3.addTag("pos", "brewhead");
+  t3.addValue("value", wifi_buffer_temp_brewhead[wifi_buffer_idx_current]);
+  influx.prepare(t3);
+  
+  InfluxData t4("temperature");
+  t4.addTag("pos", "avg");
+  t4.addValue("value", (wifi_buffer_temp_top[wifi_buffer_idx_current] + wifi_buffer_temp_side[wifi_buffer_idx_current])/2);
+  influx.prepare(t4);
+  
+  InfluxData p1("power");
+  p1.addTag("device", "heater");
+  p1.addValue("value", wifi_buffer_perc_heater[wifi_buffer_idx_current]);
+  influx.prepare(p1);
+  
+  InfluxData p2("power");
+  p2.addTag("device", "pump");
+  p2.addValue("value", wifi_buffer_perc_pump[wifi_buffer_idx_current]);
+  influx.prepare(p2);
+  
+  InfluxData tc_p("pid");
+  tc_p.addTag("part", "p");
+  tc_p.addValue("value", wifi_buffer_pid_p[wifi_buffer_idx_current]);
+  influx.prepare(tc_p);
+  
+  InfluxData tc_i("pid");
+  tc_i.addTag("part", "i");
+  tc_i.addValue("value", wifi_buffer_pid_i[wifi_buffer_idx_current]);
+  influx.prepare(tc_i);
+  
+  InfluxData tc_d("pid");
+  tc_d.addTag("part", "d");
+  tc_d.addValue("value", wifi_buffer_pid_d[wifi_buffer_idx_current]);
+  influx.prepare(tc_d);
+  
+  InfluxData tc_u("pid");
+  tc_u.addTag("part", "u");
+  tc_u.addValue("value", wifi_buffer_pid_u[wifi_buffer_idx_current]);
+  influx.prepare(tc_u);
+
+  influx.write();
+}
+
 void WIFI_service(void)
 {
   // Variable to store the HTTP request
@@ -150,7 +253,7 @@ void WIFI_service(void)
     return;
 
   // Wait until the client sends some data
-  Serial.println("new client");
+  //Serial.println("new client");
   time_connected = millis();
 
   // set a timeout of 10s - then kick the client..
@@ -223,7 +326,7 @@ void WIFI_service(void)
   header = "";
   // Close the connection
   client.stop();
-  Serial.println("Client disconnected.");
+  //Serial.println("Client disconnected.");
 }
 
 // Send XML file with the latest sensor readings

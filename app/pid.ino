@@ -5,7 +5,7 @@
 #include "pid.h"
 
 
-#define PID_TASK_STACKSIZE  2000u  // [words]
+#define PID_TASK_STACKSIZE  4000u  // [words]
 #define PID_TASK_PRIORITY   5      // idle: 0, main-loop: 1, wifi: 2, pid: 5, sensors: 4
 
 #define PID_MIN_TEMP   10.0f  // [deg-C] minimum allowed temperature
@@ -138,21 +138,29 @@ static void pid_task(void * pvParameters)
           pv = SENSORS_get_temp_boiler_max();
           
         e = target_temp - pv;
-    
-        // PID type C
-        p_share = kP * (pid_pv1 - pv);
+        float e1 = target_temp - pid_pv1;  // for type A and B
+
+        // from Wikipedia (same as type A)
+//        float e2 = target_temp - pid_pv2;
+//        p_share = kP * (e - e1);
+//        i_share = kI * ((float)(pid_ts)/1000.0f) * e;
+//        d_share = (kD * (e - 2*e1 + e2)) / ((float)(pid_ts)/1000.0f);
+
+        // PID type B
+        p_share = kP * (e - e1);
         i_share = kI * ((float)(pid_ts)/1000.0f) * e;
         d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
-        u = pid_u1 + p_share + i_share + d_share;
         
-        //u = lroundf(
-        //    pid_u1
-        //    - kP * (pv - pid_pv1)
-        //    + kI * pid_ts * e 
-        //    - (kD * (pv - 2*pid_pv1 + pid_pv2)) / (float)(pid_ts));
+        // PID type C
+//        p_share = kP * (pid_pv1 - pv);
+//        i_share = kI * ((float)(pid_ts)/1000.0f) * e;
+//        d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
+        
+        u = pid_u1 + p_share + i_share + d_share;
     
         u_limited = u;
 
+#if 1
         // faster heat-up
         if (e > 20)
           u_limited = 100;
@@ -177,6 +185,7 @@ static void pid_task(void * pvParameters)
           u_limited = pid_u_override;
           pid_u_override = -1.0f;
         }
+#endif
         
         if (u_limited < 0)
           u_limited = 0;
@@ -186,12 +195,6 @@ static void pid_task(void * pvParameters)
         // check again, if we got interrupted (not perfect, but better)
         if (pid_enabled == true)
           SSRCTRL_set_pwm_heater(lroundf(u_limited));
-    
-        // for ziegler-nicholds
-    //    if (target_temp < 100)
-    //      SSRCTRL_set_pwm_heater(1);
-    //    else
-    //      SSRCTRL_set_pwm_heater(3);
     
         // thermostat
     //    if (pv < target_temp)
@@ -234,7 +237,9 @@ static void pid_task(void * pvParameters)
                        i_share,
                        d_share,
                        u);
-  
+                       
+      WIFI_updateInfluxDB();
+      
   //    // step response
   //    if (!test_done && temp < 100)
   //      SSRCTRL_set_pwm_heater(100);
