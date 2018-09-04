@@ -122,11 +122,6 @@ static void pid_task(void * pvParameters)
 
   while(1)
   {
-    // wait until the new PID-update is almost ready
-    // update temperatures shortly before
-    vTaskDelay(pdMS_TO_TICKS(pid_ts - 520));  // 100 iterations * 5ms + 7-8ms for the readings + safety
-    SENSORS_update();
-    
     if (xSemaphoreTake(pid_sem_update, portMAX_DELAY) == pdTRUE)
     {
       if (pid_enabled == true)
@@ -138,7 +133,7 @@ static void pid_task(void * pvParameters)
           pv = SENSORS_get_temp_boiler_max();
           
         e = target_temp - pv;
-        float e1 = target_temp - pid_pv1;  // for type A and B
+//        float e1 = target_temp - pid_pv1;  // for type A and B
 
         // from Wikipedia (same as type A)
 //        float e2 = target_temp - pid_pv2;
@@ -147,14 +142,14 @@ static void pid_task(void * pvParameters)
 //        d_share = (kD * (e - 2*e1 + e2)) / ((float)(pid_ts)/1000.0f);
 
         // PID type B
-        p_share = kP * (e - e1);
-        i_share = kI * ((float)(pid_ts)/1000.0f) * e;
-        d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
-        
-        // PID type C
-//        p_share = kP * (pid_pv1 - pv);
+//        p_share = kP * (e - e1);
 //        i_share = kI * ((float)(pid_ts)/1000.0f) * e;
 //        d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
+        
+        // PID type C
+        p_share = kP * (pid_pv1 - pv);
+        i_share = kI * ((float)(pid_ts)/1000.0f) * e;
+        d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
         
         u = pid_u1 + p_share + i_share + d_share;
     

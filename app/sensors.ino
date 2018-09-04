@@ -19,14 +19,24 @@ float val_degc_boiler_side = 888.0f;
 float val_degc_boiler_top = 888.0f;
 float val_degc_brewhead = 888.0f;
 
-//static SemaphoreHandle_t sensor_sem_update = NULL;
+// circular buffer for running average
+#define SENSORS_BUFFER_SIZE  12  // 12 values, 40ms apart --> running average over 480ms
+uint32_t sensor_side_buffer[SENSORS_BUFFER_SIZE];
+uint32_t sensor_top_buffer[SENSORS_BUFFER_SIZE];
+uint32_t sensor_brewhead_buffer[SENSORS_BUFFER_SIZE];
+uint8_t sensor_buffer_idx = 0;  // current writing index
+
+static SemaphoreHandle_t sensor_sem_update = NULL;
 //static TimerHandle_t sensor_timer_update = NULL;
-//static TaskHandle_t sensor_task_handle = NULL;
-//
-//
+static TaskHandle_t sensor_task_handle = NULL;
+
+static hw_timer_t * timer_sensor_update;
+
+
 //static void sensor_timer_cb(TimerHandle_t pxTimer);
-//static void sensor_task(void * pvParameters);
-//static void SENSORS_update(void);
+static void sensor_task(void * pvParameters);
+static void SENSORS_update(void);
+static void IRAM_ATTR sensor_timer_cb(void);
 
 
 void SENSORS_setup(void)
@@ -65,20 +75,27 @@ void SENSORS_setup(void)
   Serial.println("ADC atten " + String(adc_chars.atten));
   Serial.println("ADC bit_width " + String(adc_chars.bit_width));
 
-//  // sync semaphore
-//  sensor_sem_update = xSemaphoreCreateBinary();
-//  if (sensor_sem_update == NULL)
-//    return; // error
-//    
+  // sync semaphore
+  sensor_sem_update = xSemaphoreCreateBinary();
+  if (sensor_sem_update == NULL)
+    return; // error
+    
 //  // update timer
 //  sensor_timer_update = xTimerCreate("tmr_sensor", pdMS_TO_TICKS(SENSOR_UPDATE_RATE), pdTRUE, NULL, sensor_timer_cb);
 //  if (sensor_timer_update == NULL)
 //    return; // error
 //  xTimerStart(sensor_timer_update, portMAX_DELAY);
-//
-//  // create task
-//  if (xTaskCreate(sensor_task, "task_sensor", SENSOR_TASK_STACKSIZE, NULL, 5, &sensor_task_handle) != pdPASS)
-//    return; // error
+
+  // create task
+  if (xTaskCreate(sensor_task, "task_sensor", SENSOR_TASK_STACKSIZE, NULL, SENSOR_TASK_PRIORITY, &sensor_task_handle) != pdPASS)
+    return; // error
+
+  timer_sensor_update = timerBegin(2, 80, true);  // timer 2
+  if (timer_sensor_update == NULL)
+    return;
+  timerAttachInterrupt(timer_sensor_update, &sensor_timer_cb, true);
+  // update: 25Hz -> 40ms
+  timerAlarmWrite(timer_sensor_update, 40000, true);
 }
 
 //static void sensor_timer_cb(TimerHandle_t pxTimer)
@@ -87,52 +104,71 @@ void SENSORS_setup(void)
 //  xSemaphoreGive(sensor_sem_update);
 //}
 
-//static void sensor_task(void * pvParameters)
-//{ 
-//  while(1)
-//  {
-//    xSemaphoreTake(sensor_sem_update, portMAX_DELAY);
-//
-//    SENSORS_update();
-//  }
-//}
+static void sensor_task(void * pvParameters)
+{
+  // call update function rapidly to pre-fill filter-buffer
+  for (uint32_t i = 0; i < SENSORS_BUFFER_SIZE; i++)
+    SENSORS_update();
+
+  // start timer
+  timerAlarmEnable(timer_sensor_update);
+
+  while(1)
+  {
+    xSemaphoreTake(sensor_sem_update, portMAX_DELAY);
+    // called every 40ms by timer below
+    SENSORS_update();
+  }
+}
+
+static void IRAM_ATTR sensor_timer_cb(void)
+{
+  xSemaphoreGive(sensor_sem_update);
+}
 
 static void SENSORS_update(void)
 {
   float val_mV_boiler_side, val_mV_boiler_top, val_mV_brewhead;
+  uint32_t voltage;
   uint64_t sum_side = 0, sum_top = 0, sum_brewhead = 0;
+  esp_err_t error = ESP_OK;
 
-//  uint32_t time_ = millis();
-  for (uint8_t i = 100; i; i--) // 100x3chan --> 7-8 ms + 5ms*100
+  // get voltages as mV and insert into buffer
+  error |= esp_adc_cal_get_voltage(PIN_BOILER_SIDE, &adc_chars, &voltage);
+  sensor_side_buffer[sensor_buffer_idx] = voltage;
+  error |= esp_adc_cal_get_voltage(PIN_BOILER_TOP, &adc_chars, &voltage);
+  sensor_top_buffer[sensor_buffer_idx] = voltage;
+  error |= esp_adc_cal_get_voltage(PIN_BREWHEAD, &adc_chars, &voltage);
+  sensor_brewhead_buffer[sensor_buffer_idx] = voltage;
+
+  if (error != ESP_OK)
   {
-    uint32_t voltage;
-    esp_err_t error = ESP_OK;
-
-    error |= esp_adc_cal_get_voltage(PIN_BOILER_SIDE, &adc_chars, &voltage);
-    sum_side += voltage;
-    error |= esp_adc_cal_get_voltage(PIN_BOILER_TOP, &adc_chars, &voltage);
-    sum_top += voltage;
-    error |= esp_adc_cal_get_voltage(PIN_BREWHEAD, &adc_chars, &voltage);
-    sum_brewhead += voltage;
-
-    if (error != ESP_OK)
-      return;
-
-    vTaskDelay(pdMS_TO_TICKS(5));
+    Serial.println("ESP32-ADC failed!");
+    return;
   }
-  val_mV_boiler_side = sum_side / 100.0;
-  val_mV_boiler_top = sum_top / 100.0;
-  val_mV_brewhead = sum_brewhead / 100.0;
-//  time_ = millis() - time_;
-//  Serial.println(String(time_));
-  
+
+  // move (circular-)buffer index to next position
+  sensor_buffer_idx = (sensor_buffer_idx + 1) % SENSORS_BUFFER_SIZE;
+
+  // calculate average of buffer
+  for (uint32_t i = 0; i < SENSORS_BUFFER_SIZE; i++)
+  {
+    sum_side += sensor_side_buffer[i];
+    sum_top += sensor_top_buffer[i];
+    sum_brewhead += sensor_brewhead_buffer[i];
+  }
+  val_mV_boiler_side = (float)sum_side / SENSORS_BUFFER_SIZE;
+  val_mV_boiler_top = (float)sum_top / SENSORS_BUFFER_SIZE;
+  val_mV_brewhead = (float)sum_brewhead / SENSORS_BUFFER_SIZE;
+
+  // raise task priority to avoid interruption
+  vTaskPrioritySet(NULL, configMAX_PRIORITIES - 1);
+
+  // convert mV to deg-C
   val_degc_boiler_side = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_boiler_side) ) ) / (2 * -0.00433) + 30;
   val_degc_boiler_top  = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_boiler_top) ) ) / (2 * -0.00433) + 30;
   val_degc_brewhead    = (13.582 - sqrt(13.582 * 13.582 + 4 * 0.00433 * (2230.8 - val_mV_brewhead) ) ) / (2 * -0.00433) + 30;
 
-//  Serial.println("Boiler side: " + String(val_mV_boiler_side) + "mV / Boiler top " + String(val_mV_boiler_top) + "mV / Brewhead " + String(val_mV_brewhead) + "mV");
-//  Serial.println("Boiler side: " + String(val_degc_boiler_side) + "C / Boiler top " + String(val_degc_boiler_top) + "C / Brewhead " + String(val_degc_brewhead) + "C");
-                 
   // make sure values are in plausible ranges
   if (val_degc_boiler_side < 10 || val_degc_boiler_side > 150)
     val_degc_boiler_side = 999;
@@ -140,6 +176,9 @@ static void SENSORS_update(void)
     val_degc_boiler_top = 999;
   if (val_degc_brewhead < 10 || val_degc_brewhead > 150)
     val_degc_brewhead = 999;
+
+  // re-set normal task priority
+  vTaskPrioritySet(NULL, SENSOR_TASK_PRIORITY);
 }
 
 float SENSORS_get_temp_boiler_side(void)
