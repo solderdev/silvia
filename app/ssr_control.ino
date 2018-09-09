@@ -108,7 +108,8 @@ static void IRAM_ATTR heater_timer_cb(void)
   if (enabled != true)
     return;
   
-  if (pwm_percent_heater[period_counter/10] > period_counter % 10)
+  //if (pwm_percent_heater[period_counter/10] > period_counter % 10)
+  if (pwm_percent_heater_int > period_counter)
     SSR_HEATER_ON();
   else
     SSR_HEATER_OFF();
