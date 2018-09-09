@@ -139,6 +139,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
           shot_state = SHOT_100PERCENT;
           shot_start_time = millis();
           SSRCTRL_set_pwm_pump(100);
+          PID_override(100.0f);
         }
         break;
       }
@@ -152,6 +153,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
       shot_state = SHOT_100PERCENT;
       shot_start_time = millis();
       SSRCTRL_set_pwm_pump(100);
+      PID_override(100.0f);
       break;
       
     case SHOT_100PERCENT:
