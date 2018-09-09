@@ -20,7 +20,9 @@ static PID_Mode_t target_mode = PID_MODE_WATER;
 static float pid_u1 = 0.0f;   // last output value
 static float pid_pv1 = 0.0f;  // last process value (temperature)
 static float pid_pv2 = 0.0f;  // second to last process value (temperature)
+#define PID_OVERRIDE_CNT  3  // how many times is PID overruled
 static float pid_u_override = -1.0f;  // override next PID iteration with this value if positive
+static int8_t pid_u_override_cnt = 0;  // counter for how many PID cycles the override should be in place
 static bool pid_enabled = false;
 
 static SemaphoreHandle_t pid_sem_update = NULL;
@@ -89,6 +91,7 @@ void PID_stop(void)
 void PID_override(float u_override)
 {
   pid_u_override = u_override;
+  pid_u_override_cnt = PID_OVERRIDE_CNT;
 }
 
 void PID_setTargetTemp(float temp, PID_Mode_t mode)
@@ -178,10 +181,10 @@ static void pid_task(void * pvParameters)
         }
 
         // apply override value if activated
-        if (pid_u_override >= 0.0f)
+        if (pid_u_override >= 0.0f && pid_u_override_cnt > 0)
         {
           u_limited = pid_u_override;
-          pid_u_override = -1.0f;
+          pid_u_override_cnt--;
         }
 #endif
 
