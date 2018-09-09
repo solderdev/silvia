@@ -156,14 +156,16 @@ static void pid_task(void * pvParameters)
         u_limited = u;
 
 #if 1
-        // faster heat-up
-        if (e > 20)
+        // faster heat-up, if far too cold (15*C)
+        if (e > 15)
           u_limited = 100;
 
         if (SSRCTRL_get_pwm_pump() == 0)
         {
+          // limit heater, if pump is off and we are hotter than SP
           if (u_limited > 5 && pv >= target_temp + 0.5)
             u_limited = 5;
+            
 //          if (u_limited > 10 && fabsf(e) < 1)
 //            u_limited = 10;
 //          if (u_limited > 15 && fabsf(e) < 4)
@@ -171,6 +173,7 @@ static void pid_task(void * pvParameters)
         }
         else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 20 && e > 0)
         {
+          // set a minimum of 20% heater during a shot, when temp is too low
           u_limited = 20;
         }
 
@@ -181,7 +184,8 @@ static void pid_task(void * pvParameters)
           pid_u_override = -1.0f;
         }
 #endif
-        
+
+        // safety
         if (u_limited < 0)
           u_limited = 0;
         else if (u_limited > 100)
