@@ -91,16 +91,16 @@ void SENSORS_setup(void)
 //    return; // error
 //  xTimerStart(sensor_timer_update, portMAX_DELAY);
 
-  // create task
-  if (xTaskCreate(sensor_task, "task_sensor", SENSOR_TASK_STACKSIZE, NULL, SENSOR_TASK_PRIORITY, &sensor_task_handle) != pdPASS)
-    return; // error
-
   timer_sensor_update = timerBegin(2, 80, true);  // timer 2
   if (timer_sensor_update == NULL)
     return;
   timerAttachInterrupt(timer_sensor_update, &sensor_timer_cb, true);
   // update: 25Hz -> 40ms
   timerAlarmWrite(timer_sensor_update, SENSORS_UPDATE_PERIOD_MS*1000, true);
+
+  // create task
+  if (xTaskCreate(sensor_task, "task_sensor", SENSOR_TASK_STACKSIZE, NULL, SENSOR_TASK_PRIORITY, &sensor_task_handle) != pdPASS)
+    return; // error
 }
 
 //static void sensor_timer_cb(TimerHandle_t pxTimer)
@@ -141,8 +141,10 @@ static void SENSORS_update(void)
   // get voltages as mV and insert into buffer
   error |= esp_adc_cal_get_voltage(PIN_BOILER_SIDE, &adc_chars, &voltage);
   sensor_side_buffer[sensor_buffer_idx] = voltage;
+  //vTaskDelay(pdMS_TO_TICKS(1));
   error |= esp_adc_cal_get_voltage(PIN_BOILER_TOP, &adc_chars, &voltage);
   sensor_top_buffer[sensor_buffer_idx] = voltage;
+  //vTaskDelay(pdMS_TO_TICKS(1));
   error |= esp_adc_cal_get_voltage(PIN_BREWHEAD, &adc_chars, &voltage);
   sensor_brewhead_buffer[sensor_buffer_idx] = voltage;
 
