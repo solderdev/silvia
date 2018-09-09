@@ -9,6 +9,7 @@
 #define SENSOR_UPDATE_RATE     100    // [ms]
 
 #define ADC_SENSORS      ADC_UNIT_1
+#define ADC_ATTEN        ADC_ATTEN_11db
 #define PIN_BOILER_SIDE  ADC_CHANNEL_6
 #define PIN_BOILER_TOP   ADC_CHANNEL_0
 #define PIN_BREWHEAD     ADC_CHANNEL_3
@@ -20,7 +21,8 @@ float val_degc_boiler_top = 888.0f;
 float val_degc_brewhead = 888.0f;
 
 // circular buffer for running average
-#define SENSORS_BUFFER_SIZE  12  // 12 values, 40ms apart --> running average over 480ms
+#define SENSORS_UPDATE_PERIOD_MS  29u
+#define SENSORS_BUFFER_SIZE  24
 uint32_t sensor_side_buffer[SENSORS_BUFFER_SIZE];
 uint32_t sensor_top_buffer[SENSORS_BUFFER_SIZE];
 uint32_t sensor_brewhead_buffer[SENSORS_BUFFER_SIZE];
@@ -50,9 +52,12 @@ void SENSORS_setup(void)
   // ADC capture width is 12Bit
   adc1_config_width(ADC_WIDTH_12Bit);
   // ADC1 channel 6 is GPIO34, full-scale voltage 3.9V
-  adc1_config_channel_atten((adc1_channel_t)(PIN_BOILER_SIDE), ADC_ATTEN_11db);
-  adc1_config_channel_atten((adc1_channel_t)(PIN_BOILER_TOP), ADC_ATTEN_11db);
-  adc1_config_channel_atten((adc1_channel_t)(PIN_BREWHEAD), ADC_ATTEN_11db);
+  adc1_config_channel_atten((adc1_channel_t)(PIN_BOILER_SIDE), ADC_ATTEN);
+  adc1_config_channel_atten((adc1_channel_t)(PIN_BOILER_TOP), ADC_ATTEN);
+  adc1_config_channel_atten((adc1_channel_t)(PIN_BREWHEAD), ADC_ATTEN);
+
+  //analogSetCycles(8);  // default 8
+  //analogSetClockDiv(1);  // default 1
   
 //  // measure ADC Vref
 //  esp_err_t error = adc2_vref_to_gpio(GPIO_NUM_25);
@@ -60,7 +65,7 @@ void SENSORS_setup(void)
 
   // setup ADC characteristics
   memset(&adc_chars, 0, sizeof(adc_chars));
-  esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_SENSORS, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, ADC_VREF_MEASURED, &adc_chars);
+  esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_SENSORS, ADC_ATTEN, ADC_WIDTH_BIT_12, ADC_VREF_MEASURED, &adc_chars);
   
   if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF)
     Serial.println("ADC cal-type: eFuse Vref");
@@ -95,7 +100,7 @@ void SENSORS_setup(void)
     return;
   timerAttachInterrupt(timer_sensor_update, &sensor_timer_cb, true);
   // update: 25Hz -> 40ms
-  timerAlarmWrite(timer_sensor_update, 40000, true);
+  timerAlarmWrite(timer_sensor_update, SENSORS_UPDATE_PERIOD_MS*1000, true);
 }
 
 //static void sensor_timer_cb(TimerHandle_t pxTimer)
