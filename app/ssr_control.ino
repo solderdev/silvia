@@ -390,6 +390,9 @@ void SSRCTRL_set_pwm_pump(uint8_t percent)
   }
   else
   {
+    if (pwm_percent_pump == PWM_PUMP_0_PERCENT)
+      time_on = millis();
+      
     if (percent < 15)
       pwm_percent_pump = PWM_PUMP_10_PERCENT;
     else if (percent < 25)
@@ -416,8 +419,6 @@ void SSRCTRL_set_pwm_pump(uint8_t percent)
       pwm_percent_pump = PWM_PUMP_0_PERCENT;
       return;
     }
-
-    time_on = millis();
   }
 }
 
