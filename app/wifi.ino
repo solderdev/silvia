@@ -6,11 +6,11 @@
 #include "private_defines.h"
 
 // idle: 0, main-loop: 1, wifi: 2, wifi_db: 3, pid: 5, sensors: 4
-#define WIFI_TASK_STACKSIZE  4000u  // [words]
-#define WIFI_TASK_PRIORITY   2
-#define WIFI_DB_TASK_STACKSIZE  4000u  // [words]
+#define WIFI_TASK_STACKSIZE     5000u  // [words]
+#define WIFI_TASK_PRIORITY      2
+#define WIFI_DB_TASK_STACKSIZE  5000u  // [words]
 #define WIFI_DB_TASK_PRIORITY   3
-#define WIFI_BUFFER_SIZE     120    // number of saved samples
+#define WIFI_BUFFER_SIZE        120    // number of saved samples
 
 const char* ssid     = PRIVATE_SSID;     // your network SSID (name of wifi network)
 const char* password = PRIVATE_WIFIPW;   // your network password
@@ -30,7 +30,7 @@ static float wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
 
 WiFiServer server(80);  // TODO maybe port to WebServer when more stable?
 
-Influxdb influx(INFLUXDB_HOST);
+Influxdb influx(PRIVATE_INFLUXDB_HOST_IP);
 
 static TaskHandle_t wifi_task_handle = NULL;
 static TaskHandle_t wifi_db_task_handle = NULL;
@@ -48,14 +48,6 @@ void WIFI_setup(void)
     if (xTaskCreate(wifi_task, "task_wifi", WIFI_TASK_STACKSIZE, NULL, WIFI_TASK_PRIORITY, &wifi_task_handle) != pdPASS)
       return; // error
   }
-  // sync semaphore
-  if (wifi_influxdb_sem_update == NULL)
-  {
-    wifi_influxdb_sem_update = xSemaphoreCreateBinary();
-    if (wifi_influxdb_sem_update == NULL)
-      return; // error
-  }
-  influx.setDb("silvia");
 }
 
 static void wifi_task(void * pvParameters)
@@ -75,7 +67,7 @@ static void wifi_task(void * pvParameters)
     Serial.println("Error setting up MDNS responder!");
   else
     Serial.println("mDNS responder started");
-
+  
   MDNS.addService("http", "tcp", 80);
 
   Serial.println("WiFi connected");
@@ -120,26 +112,59 @@ static void wifi_task(void * pvParameters)
   
   while (1)
   {
-    WIFI_service();
-    ArduinoOTA.handle();
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      WIFI_service();
+      ArduinoOTA.handle();
+    }
+    else
+    {
+      Serial.println("WIFI down .. attempting reconnect!");
+      WiFi.begin(ssid, password);
+      Serial.println("WIFI reconnecting .. waiting for network");
+      uint32_t trycount = 0;
+      while (WiFi.status() != WL_CONNECTED)
+      {
+        trycount++;
+        if (trycount > 150)  // 15s
+        {
+          trycount = 0;
+          Serial.println("WIFI still down .. attempting reconnect!");
+          WiFi.begin(ssid, password);
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+      }
+      Serial.println("WIFI up again!");
+    }
     vTaskDelay(pdMS_TO_TICKS(57));
   }
 }
 
 static void wifi_db_task(void * pvParameters)
 {
+  // sync semaphore
+  if (wifi_influxdb_sem_update == NULL)
+  {
+    wifi_influxdb_sem_update = xSemaphoreCreateBinary();
+    if (wifi_influxdb_sem_update == NULL)
+      Serial.println("wifi_influxdb_sem_update creation failed!!");
+  }
+  influx.setDb("silvia");
+  
   while(1)
   {
     if (xSemaphoreTake(wifi_influxdb_sem_update, portMAX_DELAY) == pdTRUE)
     {
-      WIFI_sendInfluxDBdata();
+      if (WiFi.status() == WL_CONNECTED)
+        WIFI_sendInfluxDBdata();
     }
   }
 }
 
 void WIFI_updateInfluxDB(void)
 {
-  xSemaphoreGive(wifi_influxdb_sem_update);
+  if (wifi_influxdb_sem_update != NULL)
+    xSemaphoreGive(wifi_influxdb_sem_update);
 }
 
 void WIFI_addToBuffer(float temp_top,
