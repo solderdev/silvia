@@ -11,9 +11,11 @@
 #define LED_ON     digitalWrite(PIN_LED_GREEN, HIGH)
 #define LED_OFF    digitalWrite(PIN_LED_GREEN, LOW)
 
-#define BREW_TEMP_DEFAULT   99.0f
-#define STEAM_TEMP_DEFAULT  118.0f
+#define BREW_TEMP_DEFAULT     98.0f
+#define STEAM_TEMP_DEFAULT    125.0f
+#define BREWHEAD_TEMP_TARGET  90.0f
 
+// default pump percent in filter-coffee mode
 #define PUMP_FILTER_DEFAULT  20
 
 uint32_t lastmilli = 0;
@@ -69,7 +71,7 @@ void loop()
     }
     else if (SENSORS_get_temp_boiler_avg() < PID_getTargetTemp()-1 ||
              SENSORS_get_temp_boiler_avg() > PID_getTargetTemp()+1 ||
-             SENSORS_get_temp_brewhead() < 85)
+             SENSORS_get_temp_brewhead() < BREWHEAD_TEMP_TARGET)
     {
       // temperature not optimal
       if (led_state)

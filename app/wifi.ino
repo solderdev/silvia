@@ -481,7 +481,7 @@ static void sendHTMLFile(WiFiClient cl)
   cl.println("<td><span class=\"reading\">...</span> &deg;C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
-  cl.println("<td><span class=\"sensor\">Average (99)</span></td>");
+  cl.println("<td><span class=\"sensor\">Average (98)</span></td>");
   cl.println("<td><span class=\"reading\">...</span> &deg;C</td>");
   cl.println("</tr>");
   cl.println("<tr>");
