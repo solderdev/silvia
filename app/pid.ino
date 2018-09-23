@@ -90,10 +90,10 @@ void PID_stop(void)
   Serial.println("PID controller OFF!");
 }
 
-void PID_override(float u_override)
+void PID_override(float u_override, int8_t count)
 {
   pid_u_override = u_override;
-  pid_u_override_cnt = PID_OVERRIDE_CNT;
+  pid_u_override_cnt = count;
 }
 
 void PID_setTargetTemp(float temp, PID_Mode_t mode)

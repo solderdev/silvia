@@ -1,5 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
+#include "shot.h"
 
 
 #define PIN_SSR_PUMP    27
@@ -385,7 +386,10 @@ void SSRCTRL_set_pwm_pump(uint8_t percent)
   if (percent < 5)
   {
     if (pwm_percent_pump != PWM_PUMP_0_PERCENT && millis() - time_on > 3000)
-      PID_override(0.0f);
+    {
+      if (SHOT_getState() != SHOT_PAUSE)
+        PID_override(0.0f, PID_OVERRIDE_CNT);
+    }
     pwm_percent_pump = PWM_PUMP_0_PERCENT;
   }
   else

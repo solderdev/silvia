@@ -5,6 +5,7 @@
  */
 #include "private_defines.h"
 #include "pid.h"
+#include "shot.h"
 
 //int LED_BUILTIN = 2;
 #define PIN_LED_GREEN  25

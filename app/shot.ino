@@ -1,16 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
 #include "Arduino.h"
-
-typedef enum {
-  SHOT_OFF = 0,
-  SHOT_INIT_FILL,
-  SHOT_RAMP,
-  SHOT_PAUSE,
-  SHOT_100PERCENT,
-  SHOT_MANUAL,
-  
-} SHOT_State_t;
+#include "shot.h"
 
 static SHOT_State_t shot_state = SHOT_OFF;
 
@@ -93,6 +84,11 @@ void SHOT_manuallyStartShot(void)
   shot_state = SHOT_MANUAL;
 }
 
+SHOT_State_t SHOT_getState(void)
+{
+  return shot_state;
+}
+
 // start: enable valve
 // ramp up pump from shot_pump_percent_start to 100% in shot_time_ramp seconds
 //   increment_duration = shot_time_ramp_ms / ((shot_pump_stop_percent - shot_pump_start_percent)/10)
@@ -139,7 +135,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
           shot_state = SHOT_100PERCENT;
           shot_start_time = millis();
           SSRCTRL_set_pwm_pump(100);
-          PID_override(100.0f);
+          PID_override(100.0f, PID_OVERRIDE_CNT);
         }
         break;
       }
@@ -153,7 +149,7 @@ static void shot_timer_cb(TimerHandle_t pxTimer)
       shot_state = SHOT_100PERCENT;
       shot_start_time = millis();
       SSRCTRL_set_pwm_pump(100);
-      PID_override(100.0f);
+      PID_override(100.0f, PID_OVERRIDE_CNT);
       break;
       
     case SHOT_100PERCENT:
