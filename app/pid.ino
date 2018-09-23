@@ -11,7 +11,8 @@
 #define PID_MIN_TEMP   10.0f  // [deg-C] minimum allowed temperature
 #define PID_MAX_TEMP  139.0f  // [deg-C] maximum allowed temperature
 
-static float kP = 0.0f;
+static float kPpos = 0.0f;  // positive contribution, if PV_old > PV
+static float kPneg = 0.0f;  // negative contribution, if PV_old < PV
 static float kI = 0.0f;
 static float kD = 0.0f;
 static uint32_t pid_ts = 0;  // [ms] update interval
@@ -34,10 +35,11 @@ static void pid_timer_cb(TimerHandle_t pxTimer);
 static void pid_task(void * pvParameters);
 
 
-uint8_t PID_setup(float p, float i, float d, uint32_t ts_ms)
+uint8_t PID_setup(float p_pos, float p_neg, float i, float d, uint32_t ts_ms)
 {
   // P, I and D parameters
-  kP = p;
+  kPpos = p_pos;
+  kPneg = p_neg;
   kI = i;
   kD = d;
 
@@ -78,7 +80,7 @@ void PID_start(void)
 
   pid_enabled = true;
   Serial.println("PID controller ON!");
-  Serial.println("P = " + String(kP) + " I = " + String(kI) + " D = " + String(kD));
+  Serial.println("P+ = " + String(kPpos) + "P- = " + String(kPneg) + " I = " + String(kI) + " D = " + String(kD));
 }
 
 void PID_stop(void)
@@ -150,7 +152,10 @@ static void pid_task(void * pvParameters)
 //        d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
         
         // PID type C
-        p_share = kP * (pid_pv1 - pv);
+        if ((pid_pv1 - pv) > 0)
+          p_share = kPpos * (pid_pv1 - pv);
+        else
+          p_share = kPneg * (pid_pv1 - pv);
         i_share = kI * ((float)(pid_ts)/1000.0f) * e;
         d_share = (kD * (2*pid_pv1 - pv - pid_pv2)) / ((float)(pid_ts)/1000.0f);
         
@@ -177,7 +182,7 @@ static void pid_task(void * pvParameters)
         else if (SSRCTRL_get_pwm_pump() == 100 && u_limited < 20 && e > 0)
         {
           // set a minimum of 20% heater during a shot, when temp is too low
-          u_limited = 20;
+          //u_limited = 20;
         }
 
         // apply override value if activated
