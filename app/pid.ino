@@ -222,7 +222,7 @@ static void pid_task(void * pvParameters)
         u = 0;
       }
 
-      if (1)
+      if (0)
         Serial.println(String(millis()) + " , " + 
                        String(target_temp) + " , " + 
                        String(SENSORS_get_temp_boiler_side()) + " , " + 

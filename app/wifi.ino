@@ -31,6 +31,7 @@ static float wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
 WiFiServer server(80);  // TODO maybe port to WebServer when more stable?
 
 Influxdb influx(PRIVATE_INFLUXDB_HOST_IP);
+volatile bool reconnect_influx = false;
 
 static TaskHandle_t wifi_task_handle = NULL;
 static TaskHandle_t wifi_db_task_handle = NULL;
@@ -134,6 +135,7 @@ static void wifi_task(void * pvParameters)
         }
         vTaskDelay(pdMS_TO_TICKS(100));
       }
+      reconnect_influx = true;
       Serial.println("WIFI up again!");
     }
     vTaskDelay(pdMS_TO_TICKS(57));
@@ -156,7 +158,16 @@ static void wifi_db_task(void * pvParameters)
     if (xSemaphoreTake(wifi_influxdb_sem_update, portMAX_DELAY) == pdTRUE)
     {
       if (WiFi.status() == WL_CONNECTED)
+      {
+        if (reconnect_influx)
+        {
+          reconnect_influx = false;
+          influx.setDb("silvia");  // reset http client and connect to database
+        }
         WIFI_sendInfluxDBdata();
+      }
+      else
+          reconnect_influx = true;
     }
   }
 }
