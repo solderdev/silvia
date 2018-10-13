@@ -50,17 +50,44 @@ void WIFI_setup(void)
   }
 }
 
+static void wifi_checkConnectionOrReconnect()
+{
+  if (WiFi.status() == WL_CONNECTED)
+    return;
+
+  // kill webserver
+  server.end();
+  
+  Serial.println("WIFI down .. attempting connect!");
+  WiFi.disconnect();
+  WiFi.begin(ssid, password);
+  
+  Serial.println("WIFI reconnecting .. waiting for network");
+  uint32_t trycount = 0;
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    trycount++;
+    if (trycount > 150)  // 15s
+    {
+      trycount = 0;
+      Serial.println("WIFI still down .. attempting reconnect!");
+      WiFi.disconnect();
+      WiFi.begin(ssid, password);
+    }
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+  Serial.println("WIFI up again!");
+
+  // start webserver
+  server.begin();
+}
+
 static void wifi_task(void * pvParameters)
 {
   Serial.print("Attempting to connect to SSID: ");
   Serial.println(ssid);
-  WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    vTaskDelay(pdMS_TO_TICKS(501));
-    // Serial.print(".");
-  }
+  wifi_checkConnectionOrReconnect();
 
   // be reachable under silvia.local
   if (!MDNS.begin("silvia"))
@@ -73,8 +100,6 @@ static void wifi_task(void * pvParameters)
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-
-  server.begin();
 
   // over-the-air update:
   ArduinoOTA
@@ -112,31 +137,11 @@ static void wifi_task(void * pvParameters)
   
   while (1)
   {
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      WIFI_service();
-      ArduinoOTA.handle();
-    }
-    else
-    {
-      Serial.println("WIFI down .. attempting reconnect!");
-      WiFi.begin(ssid, password);
-      Serial.println("WIFI reconnecting .. waiting for network");
-      uint32_t trycount = 0;
-      while (WiFi.status() != WL_CONNECTED)
-      {
-        trycount++;
-        if (trycount > 150)  // 15s
-        {
-          trycount = 0;
-          Serial.println("WIFI still down .. attempting reconnect!");
-          WiFi.begin(ssid, password);
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));
-      }
-      reconnect_influx = true;
-      Serial.println("WIFI up again!");
-    }
+    wifi_checkConnectionOrReconnect();
+    
+    WIFI_service();
+    ArduinoOTA.handle();
+
     vTaskDelay(pdMS_TO_TICKS(57));
   }
 }
@@ -282,7 +287,7 @@ void WIFI_service(void)
     return;
 
   // Wait until the client sends some data
-  //Serial.println("new client");
+  Serial.println("new client");
   time_connected = millis();
 
   // set a timeout of 10s - then kick the client..
@@ -352,7 +357,7 @@ void WIFI_service(void)
     }
   }
   // Clear the header variable
-  header = "";
+  //header = "";
   // Close the connection
   client.stop();
   //Serial.println("Client disconnected.");
