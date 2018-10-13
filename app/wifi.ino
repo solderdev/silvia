@@ -31,7 +31,6 @@ static float wifi_buffer_pid_u[WIFI_BUFFER_SIZE];
 WiFiServer server(80);  // TODO maybe port to WebServer when more stable?
 
 Influxdb influx(PRIVATE_INFLUXDB_HOST_IP);
-volatile bool reconnect_influx = false;
 
 static TaskHandle_t wifi_task_handle = NULL;
 static TaskHandle_t wifi_db_task_handle = NULL;
@@ -151,7 +150,6 @@ static void wifi_db_task(void * pvParameters)
     if (wifi_influxdb_sem_update == NULL)
       Serial.println("wifi_influxdb_sem_update creation failed!!");
   }
-  influx.setDb("silvia");
   
   while(1)
   {
@@ -159,15 +157,8 @@ static void wifi_db_task(void * pvParameters)
     {
       if (WiFi.status() == WL_CONNECTED)
       {
-        if (reconnect_influx)
-        {
-          reconnect_influx = false;
-          influx.setDb("silvia");  // reset http client and connect to database
-        }
         WIFI_sendInfluxDBdata();
       }
-      else
-          reconnect_influx = true;
     }
   }
 }
@@ -223,6 +214,8 @@ void WIFI_resetBuffer(void)
 //                           float pid_u)
 void WIFI_sendInfluxDBdata(void)
 {
+  influx.setDb("silvia");
+  
   InfluxData t1("temperature");
   t1.addTag("pos", "top");
   t1.addValue("value", wifi_buffer_temp_top[wifi_buffer_idx_current]);
