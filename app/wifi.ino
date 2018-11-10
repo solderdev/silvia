@@ -337,6 +337,21 @@ void WIFI_service(void)
           Serial.println("received command to turn off!");
           PWR_powerOff();
         }
+        else if (header.indexOf("heap") >= 0)
+        {
+          client.println("Content-Type: text/html");
+          client.println("Connection: keep-alive");
+          client.println();
+          client.println("<!DOCTYPE html>");
+          client.println("<html>");
+          client.println("<body>");
+          client.print("free mem: ");
+          client.print(ESP.getFreeHeap());
+          client.print("  min: ");
+          client.println(ESP.getMinFreeHeap());
+          client.println("</body>");
+          client.println("</html>");
+        }
         // When the client connects for the first time, send it the index.html file
         else
         {
