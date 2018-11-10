@@ -6,11 +6,13 @@
 #include "private_defines.h"
 
 // idle: 0, main-loop: 1, wifi: 2, wifi_db: 3, pid: 5, sensors: 4
-#define WIFI_TASK_STACKSIZE     5000u  // [words]
-#define WIFI_TASK_PRIORITY      2
-#define WIFI_DB_TASK_STACKSIZE  5000u  // [words]
-#define WIFI_DB_TASK_PRIORITY   3
-#define WIFI_BUFFER_SIZE        120    // number of saved samples
+#define WIFI_TASK_STACKSIZE      5000u  // [words]
+#define WIFI_TASK_PRIORITY       2
+#define WIFI_DB_TASK_STACKSIZE   5000u  // [words]
+#define WIFI_DB_TASK_PRIORITY    4
+#define WIFI_OTA_TASK_STACKSIZE  5000u  // [words]
+#define WIFI_OTA_TASK_PRIORITY   3
+#define WIFI_BUFFER_SIZE         120    // number of saved samples
 
 const char* ssid     = PRIVATE_SSID;     // your network SSID (name of wifi network)
 const char* password = PRIVATE_WIFIPW;   // your network password
@@ -34,10 +36,13 @@ Influxdb influx(PRIVATE_INFLUXDB_HOST_IP);
 
 static TaskHandle_t wifi_task_handle = NULL;
 static TaskHandle_t wifi_db_task_handle = NULL;
+static TaskHandle_t wifi_ota_task_handle = NULL;
 
 SemaphoreHandle_t wifi_influxdb_sem_update = NULL;
 
 static void wifi_task(void * pvParameters);
+static void wifi_ota_task(void * pvParameters);
+static void wifi_db_task(void * pvParameters);
 static void sendXMLFile(WiFiClient cl);
 static void sendHTMLFile(WiFiClient cl);
 
@@ -108,6 +113,49 @@ static void wifi_task(void * pvParameters)
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
+  // start database task when WIFI is available
+  if (wifi_db_task_handle == NULL)
+  {
+    xTaskCreate(wifi_db_task, "task_db_wifi", WIFI_DB_TASK_STACKSIZE, NULL, WIFI_DB_TASK_PRIORITY, &wifi_db_task_handle);
+  }
+  
+  // start OTA task when WIFI is available
+  if (wifi_ota_task_handle == NULL)
+  {
+    xTaskCreate(wifi_ota_task, "task_ota_wifi", WIFI_OTA_TASK_STACKSIZE, NULL, WIFI_OTA_TASK_PRIORITY, &wifi_ota_task_handle);
+  }
+  
+  while (1)
+  {
+    wifi_checkConnectionOrReconnect();
+
+    WIFI_service();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+static void wifi_db_task(void * pvParameters)
+{
+  // sync semaphore
+  if (wifi_influxdb_sem_update == NULL)
+  {
+    wifi_influxdb_sem_update = xSemaphoreCreateBinary();
+    if (wifi_influxdb_sem_update == NULL)
+      Serial.println("wifi_influxdb_sem_update creation failed!!");
+  }
+  
+  while(1)
+  {
+    if (xSemaphoreTake(wifi_influxdb_sem_update, portMAX_DELAY) == pdTRUE)
+    {
+      if (WiFi.isConnected())
+        WIFI_sendInfluxDBdata();
+    }
+  }
+}
+
+static void wifi_ota_task(void * pvParameters)
+{
   // over-the-air update:
   ArduinoOTA
     .onStart([]() {
@@ -135,43 +183,12 @@ static void wifi_task(void * pvParameters)
       else if (error == OTA_END_ERROR) Serial.println("End Failed");
     });
   ArduinoOTA.begin();
-
-  // start database task when WIFI is available
-  if (wifi_db_task_handle == NULL)
-  {
-    xTaskCreate(wifi_db_task, "task_db_wifi", WIFI_DB_TASK_STACKSIZE, NULL, WIFI_DB_TASK_PRIORITY, &wifi_db_task_handle);
-  }
-  
-  while (1)
-  {
-    wifi_checkConnectionOrReconnect();
-    
-    WIFI_service();
-    ArduinoOTA.handle();
-
-    vTaskDelay(pdMS_TO_TICKS(57));
-  }
-}
-
-static void wifi_db_task(void * pvParameters)
-{
-  // sync semaphore
-  if (wifi_influxdb_sem_update == NULL)
-  {
-    wifi_influxdb_sem_update = xSemaphoreCreateBinary();
-    if (wifi_influxdb_sem_update == NULL)
-      Serial.println("wifi_influxdb_sem_update creation failed!!");
-  }
   
   while(1)
   {
-    if (xSemaphoreTake(wifi_influxdb_sem_update, portMAX_DELAY) == pdTRUE)
-    {
-      if (WiFi.status() == WL_CONNECTED)
-      {
-        WIFI_sendInfluxDBdata();
-      }
-    }
+    if (WiFi.isConnected())
+      ArduinoOTA.handle();
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -192,8 +209,7 @@ void WIFI_addToBuffer(float temp_top,
                       float pid_u)
 {
   // go to next slot in buffer
-  wifi_buffer_idx_current += 1;
-  wifi_buffer_idx_current %= WIFI_BUFFER_SIZE;
+  wifi_buffer_idx_current = (wifi_buffer_idx_current + 1) % WIFI_BUFFER_SIZE;
 
   wifi_buffer_temp_top[wifi_buffer_idx_current] = temp_top;
   wifi_buffer_temp_side[wifi_buffer_idx_current] = temp_side;
@@ -301,7 +317,7 @@ void WIFI_service(void)
   while (client.connected() && (millis() < time_connected + 10000))
   {
     if (!client.available())
-      vTaskDelay(pdMS_TO_TICKS(1));
+      vTaskDelay(pdMS_TO_TICKS(5));
     else
     {
       // new data available to read
