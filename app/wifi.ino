@@ -50,29 +50,36 @@ void WIFI_setup(void)
   }
 }
 
+static void wifi_reconnect()
+{
+  WiFi.disconnect();
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  WiFi.enableSTA(true);
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  WiFi.begin(ssid, password);
+}
+
 static void wifi_checkConnectionOrReconnect()
 {
-  if (WiFi.status() == WL_CONNECTED)
+  if (WiFi.isConnected())
     return;
 
   // kill webserver
   server.end();
   
   Serial.println("WIFI down .. attempting connect!");
-  WiFi.disconnect();
-  WiFi.begin(ssid, password);
+  wifi_reconnect();
   
   Serial.println("WIFI reconnecting .. waiting for network");
   uint32_t trycount = 0;
-  while (WiFi.status() != WL_CONNECTED)
+  while (!WiFi.isConnected())
   {
     trycount++;
     if (trycount > 150)  // 15s
     {
       trycount = 0;
       Serial.println("WIFI still down .. attempting reconnect!");
-      WiFi.disconnect();
-      WiFi.begin(ssid, password);
+      wifi_reconnect();
     }
     vTaskDelay(pdMS_TO_TICKS(100));
   }
