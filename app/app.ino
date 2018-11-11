@@ -7,6 +7,8 @@
 #include "pid.h"
 #include "shot.h"
 
+#define CORE_DEBUG_LEVEL 0
+
 //int LED_BUILTIN = 2;
 #define PIN_LED_GREEN  25
 #define LED_ON     digitalWrite(PIN_LED_GREEN, HIGH)
