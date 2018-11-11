@@ -1,6 +1,6 @@
 
 #include <WiFi.h>
-#include <ESPmDNS.h>
+//#include <ESPmDNS.h>
 #include <ArduinoOTA.h>
 #include <InfluxDb.h>
 #include "private_defines.h"
@@ -62,6 +62,8 @@ static void wifi_reconnect()
   WiFi.enableSTA(true);
   vTaskDelay(pdMS_TO_TICKS(1000));
   WiFi.begin(ssid, password);
+  WiFi.setSleep(false);
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
 }
 
 static void wifi_checkConnectionOrReconnect()
@@ -101,13 +103,12 @@ static void wifi_task(void * pvParameters)
 
   wifi_checkConnectionOrReconnect();
 
-  // be reachable under silvia.local
-  if (!MDNS.begin("silvia"))
-    Serial.println("Error setting up MDNS responder!");
-  else
-    Serial.println("mDNS responder started");
-  
-  MDNS.addService("http", "tcp", 80);
+//  // be reachable under silvia.local
+//  if (!MDNS.begin("silvia"))
+//    Serial.println("Error setting up MDNS responder!");
+//  else
+//    Serial.println("mDNS responder started");
+//  MDNS.addService("http", "tcp", 80);
 
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
