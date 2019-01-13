@@ -1,0 +1,24 @@
+<?xml version = "1.0"?>
+<inputs>
+<rd>
+%TEMP_TOP%
+</rd>
+<rd>
+%TEMP_SIDE%
+</rd>
+<rd>
+%TEMP_AVG%
+</rd>
+<rd>
+%TEMP_BREWHEAD%
+</rd>
+<rd>
+%PERC_HEATER%
+</rd>
+<rd>
+%SHOT_TIME%
+</rd>
+<pwr>
+%POWERSTATE%
+</pwr>
+</inputs>

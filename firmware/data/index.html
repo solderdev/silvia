@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Silvia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script>
+      function DisplayCurrentTime() {
+          var date = new Date();
+          var hours = date.getHours() < 10 ? "0" + date.getHours() : date.getHours();
+          var minutes = date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes();
+          var seconds = date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds();
+          time = hours + ":" + minutes + ":" + seconds;
+          var currentTime = document.getElementById("currentTime");
+          currentTime.innerHTML = time;
+      };
+      function GetReadings() {
+      	var request = new XMLHttpRequest();
+      	request.onreadystatechange = function() {
+    			if (this.status == 200) {
+    				if (this.responseXML != null) {
+    					/*XML file received - contains sensor readings*/
+    					var count;
+    					var num_an = this.responseXML.getElementsByTagName('rd').length;
+    					for (count = 0; count < num_an; count++) {
+    						document.getElementsByClassName("rd")[count].innerHTML =
+    					  this.responseXML.getElementsByTagName('rd')[count].childNodes[0].nodeValue;
+    					}
+              num_an = this.responseXML.getElementsByTagName('pwr').length;
+              for (count = 0; count < num_an; count++) {
+                document.getElementsByClassName("pwr")[count].innerHTML =
+                this.responseXML.getElementsByTagName('pwr')[count].childNodes[0].nodeValue;
+              }
+              DisplayCurrentTime();
+    				}
+    			}
+      	}
+      	/*Send HTTP GET request to get the latest sensor readings*/
+      	request.open("GET", "/update_readings", true);
+      	request.send(null);
+        setTimeout('GetReadings()', 1000);
+      };
+      function powerOnButtonFunction() {
+        var request = new XMLHttpRequest();
+        request.open("POST", "/on", true);
+        request.send(null);
+      };
+      function powerOffButtonFunction() {
+        var request = new XMLHttpRequest();
+        request.open("POST", "/off", true);
+        request.send(null);
+      };
+      function resetButtonFunction() {
+        var request = new XMLHttpRequest();
+        request.open("POST", "/reset", true);
+        request.send(null);
+      };
+      document.addEventListener('DOMContentLoaded', function() {
+        GetReadings();
+      }, false);
+    </script>
+  </head>
+  <body>
+    <h1>Silvia</h1>
+    <h3>Last update: <span id="currentTime"></span></h3>
+    <p>Status: <span class="pwr">...</span></p>
+    <table>
+      <tr>
+        <th width=150px>SENSOR</th>
+        <th width=100px>VALUE</th>
+      </tr>
+      <tr>
+        <td><span class="sensor">Top</span></td>
+        <td><span class="rd">...</span> &deg;C</td>
+      </tr>
+      <tr>
+        <td><span class="sensor">Side</span></td>
+        <td><span class="rd">...</span> &deg;C</td>
+      </tr>
+      <tr>
+        <td><span class="sensor">Average (%TARGETTEMP_BOILER%)</span></td>
+        <td><span class="rd">...</span> &deg;C</td>
+      </tr>
+      <tr>
+        <td><span class="sensor">Brewhead (%TARGETTEMP_BREWHEAD%)</span></td>
+        <td><span class="rd">...</span> &deg;C</td>
+      </tr>
+      <tr>
+        <td><span class="sensor">Heater</span></td>
+        <td><span class="rd">...</span> &#37;</td>
+      </tr>
+      <tr>
+        <td><span class="sensor">Shot Time</span></td>
+        <td><span class="rd">...</span> s</td>
+      </tr>
+    </table>
+    <button onclick="powerOnButtonFunction()">Power On</button>
+    <button onclick="powerOffButtonFunction()">Power Off</button>
+    <button onclick="resetButtonFunction()">Reset</button>
+  </body>
+</html>
