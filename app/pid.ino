@@ -76,7 +76,7 @@ void PID_start(void)
   SSRCTRL_sync();
   xTimerReset(pid_timer_update, 0);
   
-  WIFI_resetBuffer();
+  //WIFI_resetBuffer();
 
   pid_enabled = true;
   Serial.println("PID controller ON!");
