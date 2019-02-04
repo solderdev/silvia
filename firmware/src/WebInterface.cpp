@@ -224,8 +224,8 @@ void WebInterface::task_influx_wrapper(void *arg)
 }
 void WebInterface::task_influx()
 {
-  esp_err_t err;
-  int response_code;
+  esp_err_t err = ESP_FAIL;
+  int response_code = 0;
 
   // sync semaphore
   if (influx_sem_update == nullptr)
@@ -237,18 +237,22 @@ void WebInterface::task_influx()
     return;
   }
 
-  // make sure the config struct is zeroed out
-  std::memset(&http_client_config_, 0, sizeof(http_client_config_));
-
-  // set config for client init
-  http_client_config_.url = INFLUX_URL;
-  http_client_config_.port = 8086;
-  http_client_config_.method = HTTP_METHOD_POST;
-  http_client_config_.timeout_ms = 500;
-  http_client_ = esp_http_client_init(&http_client_config_);
-
   while(1)
   {
+    // if we had an error or start for the first time, re-init client
+    if (err != ESP_OK || response_code != 204)
+    {
+      // make sure the config struct is zeroed out
+      std::memset(&http_client_config_, 0, sizeof(http_client_config_));
+
+      // set config for client init
+      http_client_config_.url = INFLUX_URL;
+      http_client_config_.port = 8086;
+      http_client_config_.method = HTTP_METHOD_POST;
+      http_client_config_.timeout_ms = 500;
+      http_client_ = esp_http_client_init(&http_client_config_);
+    }
+
     if (xSemaphoreTake(influx_sem_update, portMAX_DELAY) == pdTRUE)
     {
       if (WiFi.isConnected())
@@ -276,15 +280,27 @@ void WebInterface::task_influx()
 
         err = esp_http_client_set_post_field(http_client_, data.c_str(), data.length());
         if (err != ESP_OK)
+        {
           Serial.println("INFLUX HTTP esp_http_client_set_post_field issue: " + String(esp_err_to_name(err)));
+          esp_http_client_cleanup(http_client_);
+          continue;
+        }
 
         err = esp_http_client_perform(http_client_);
         if (err != ESP_OK)
+        {
           Serial.println("INFLUX HTTP esp_http_client_perform issue: " + String(esp_err_to_name(err)));
+          esp_http_client_cleanup(http_client_);
+          continue;
+        }
 
         response_code = esp_http_client_get_status_code(http_client_);
         if (response_code != 204)
+        {
           Serial.println("INFLUX HTTP ERROR - response was: " + String(response_code));
+          esp_http_client_cleanup(http_client_);
+          continue;
+        }
 
         // signal, if the operation took longer than expected
         if (millis() - httpclient_start_ms > 500)
