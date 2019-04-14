@@ -9,6 +9,7 @@
 #include "Shot.hpp"
 #include "Preheat.hpp"
 #include "PIDHeater.hpp"
+#include "coffee_config.hpp"
 
 
 static WaterControl *instance = nullptr;
@@ -72,7 +73,7 @@ void WaterControl::startShot()
   // keep pump and valve on, if already running
   stop(100, true, WATERCTRL_SHOT);
 
-  shot_->start(300, 3000, 4000, 10, 30);  // init-100p-t, ramp-t, pause-t, min-%, max-%
+  shot_->start(SHOT_T_INITWATER, SHOT_T_RAMP, SHOT_T_PAUSE, SHOT_RAMP_MIN, SHOT_RAMP_MAX);  // init-100p-t, ramp-t, pause-t, min-%, max-%
 }
 
 uint32_t WaterControl::getShotTime()
@@ -89,7 +90,7 @@ void WaterControl::startPreheat()
   stop(100, true, WATERCTRL_PREHEAT);
 
   //preheat: valve open - 100% pump - valve close + delay (800ms) - 0% pump .. repeat every 10s
-  preheat_->start(1000, 800, 10000);  // ms 100% pump , ms build pressure, ms pause)
+  preheat_->start(PREHEAT_T_WATER, PREHEAT_T_FILL, PREHEAT_T_PAUSE);  // ms 100% pump , ms build pressure, ms pause)
 }
 
 void WaterControl::startSteam(uint8_t pump_percent)
@@ -99,12 +100,12 @@ void WaterControl::startSteam(uint8_t pump_percent)
 
   pump_->setPWM(pump_percent);
 
-  pid_boiler_->setTarget(STEAM_TEMP_DEFAULT, PID_MODE_STEAM);
+  pid_boiler_->setTarget(STEAM_TEMP, PID_MODE_STEAM);
 }
 
 void WaterControl::stop(uint8_t new_pump_percent, bool new_state_valve, WATERCTRL_State_t new_state)
 {
-  pid_boiler_->setTarget(BREW_TEMP_DEFAULT, PID_MODE_WATER);
+  pid_boiler_->setTarget(BREW_TEMP, PID_MODE_WATER);
   
   shot_->stop(new_pump_percent, new_state_valve);
   preheat_->stop(new_pump_percent, new_state_valve);

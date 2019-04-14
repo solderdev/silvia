@@ -3,6 +3,7 @@
 #include "WaterControl.hpp"
 #include "Button.hpp"
 #include "Pins.hpp"
+#include "coffee_config.hpp"
 
 static HWInterface *instance = nullptr;
 
@@ -53,7 +54,7 @@ void HWInterface::service()
     power_trigger_available_ = 1;
 
   // auto power-down
-  if (power_state_ != 0 && power_state_ + 50u * 60u * 1000u < millis())
+  if (power_state_ != 0 && power_state_ + POWEROFF_MINUTES * 60u * 1000u < millis())
   {
     // on for more than 50 min
     Serial.print("AUTO ");

@@ -37,7 +37,6 @@ public:
   static float getTempBoilerSide();
   static float getTempBrewhead();
 
-  static constexpr int32_t ADC_VREF_MEASURED = 1141;  // mV
   static constexpr adc_unit_t ADC_SENSORS    = ADC_UNIT_1;
   static constexpr adc_atten_t ADC_ATTEN     = ADC_ATTEN_11db;
 

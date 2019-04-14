@@ -2,6 +2,7 @@
 #include "Pins.hpp"
 #include "Timers.hpp"
 #include "TaskConfig.hpp"
+#include "coffee_config.hpp"
 
 // static void timer_callback(void);
 

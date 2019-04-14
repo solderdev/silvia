@@ -41,7 +41,4 @@ private:
   portMUX_TYPE mux_;
   void timer_cb();
   static void timer_cb_wrapper(TimerHandle_t arg);
-
-  static constexpr float PID_OVERRIDE_STARTSHOT = 100.0f;
-  static constexpr int8_t PID_OVERRIDE_COUNT = 3;
 };

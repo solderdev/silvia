@@ -17,10 +17,6 @@ typedef enum {
 } WATERCTRL_State_t;
 
 
-#define BREW_TEMP_DEFAULT     98.0f
-#define STEAM_TEMP_DEFAULT    125.0f
-
-
 class WaterControl
 {
 public:

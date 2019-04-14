@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "coffee_config.hpp"
 
 class WaterControl;
 class SSRHeater;
@@ -20,7 +21,7 @@ class PIDHeater
 {
 public:
   // quite good: P+: 45  P-: 100  I: 1.2  D: 0
-  PIDHeater(WaterControl *water_control, float p_pos = 25, float p_neg = 100, float i = 1.4f, float d = -10, uint32_t ts_ms = 1000);
+  PIDHeater(WaterControl *water_control, float p_pos = PID_P_POS, float p_neg = PID_P_NEG, float i = PID_I, float d = PID_D, uint32_t ts_ms = PID_TS);
   void start();
   void stop();
   void overrideOutput(float u_override, int8_t count);
