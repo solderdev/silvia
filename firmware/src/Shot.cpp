@@ -63,6 +63,7 @@ void Shot::timer_cb()
       
     case SHOT_RAMP:
       current_ramp_percent_ += 10;
+      water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
       if (current_ramp_percent_ > pump_stop_percent_)
       {
         // ramp finished - continue with pause or 100%
@@ -82,7 +83,6 @@ void Shot::timer_cb()
           start_time_ = millis();
           stop_time_ = 0;
           water_control_->pump_->setPWM(100);
-          water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
         }
         break;
       }
@@ -100,7 +100,6 @@ void Shot::timer_cb()
       start_time_ = millis();
       stop_time_ = 0;
       water_control_->pump_->setPWM(100);
-      water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
       break;
       
     case SHOT_100PERCENT:
