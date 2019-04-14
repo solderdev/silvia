@@ -116,7 +116,15 @@ void PIDHeater::task()
       {
         // Serial.println("PID running at " + String(millis()));
         if (mode_ == PID_MODE_WATER)
-          pv = SensorsHandler::getInstance()->getTempBoilerAvg();
+        {
+          float top = SensorsHandler::getInstance()->getTempBoilerTop();
+          float side = SensorsHandler::getInstance()->getTempBoilerSide();
+          float average = SensorsHandler::getInstance()->getTempBoilerAvg();
+          if (side > top)
+            pv = side;
+          else
+            pv = average;
+        }
         else
           pv = SensorsHandler::getInstance()->getTempBoilerMax();
           
