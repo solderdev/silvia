@@ -183,7 +183,17 @@ void PIDHeater::task()
 
         // check again, if we got interrupted (not perfect, but better)
         if (enabled_)
-          heater_->setPWM(lroundf(u_limited));
+        {
+          uint32_t set_value = lroundf(u_limited);
+          // if the PID output is positive, apply a minimum value
+          // otherwise heater is too slow to react and system is instable
+          if (set_value == 0)
+            heater_->setPWM(0);
+          else if (set_value <= PID_MIN_OUTPUT)
+            heater_->setPWM(PID_MIN_OUTPUT);  // minimum heater output
+          else
+            heater_->setPWM(set_value);
+        }
     
         // thermostat simulation
         // if (pv < target_temp)
