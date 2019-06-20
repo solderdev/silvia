@@ -24,7 +24,6 @@ HWInterface::HWInterface(WaterControl *water_control) :
   sw_water = new Button(Pins::switch_water, INPUT);
   sw_steam = new Button(Pins::switch_steam, INPUT);
 
-  power_state_ = 0;
   water_control_->disable();
   digitalWrite(Pins::led_green, LOW);
 
@@ -54,7 +53,7 @@ void HWInterface::service()
     power_trigger_available_ = 1;
 
   // auto power-down
-  if (power_state_ != 0 && power_state_ + POWEROFF_MINUTES * 60u * 1000u < millis())
+  if (power_state_ != 0 && (unsigned long)(power_state_ + POWEROFF_MINUTES * 60u * 1000u) < millis())
   {
     // on for more than 50 min
     Serial.print("AUTO ");
