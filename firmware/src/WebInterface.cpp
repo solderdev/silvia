@@ -13,6 +13,7 @@
 #include "PIDHeater.hpp"
 #include <cstring>
 #include "Pins.hpp"
+#include "helpers.hpp"
 
 // from https://techtutorialsx.com/2017/12/16/esp32-arduino-async-http-server-serving-a-html-page-from-flash-memory/
 // HTML compressor: https://htmlcompressor.com/compressor/ or https://www.willpeavy.com/minifier/
@@ -257,7 +258,7 @@ void WebInterface::task_influx()
     {
       if (WiFi.isConnected())
       {
-        uint32_t httpclient_start_ms = millis();
+        uint32_t httpclient_start_ms = systime_ms();
 
         // re-set client for next request
         esp_http_client_set_url(http_client_, INFLUX_URL);
@@ -303,8 +304,8 @@ void WebInterface::task_influx()
         }
 
         // signal, if the operation took longer than expected
-        if (millis() - httpclient_start_ms > 500)
-          Serial.println("INFLUX duration longer than expected: " + String(millis() - httpclient_start_ms));
+        if (systime_ms() - httpclient_start_ms > 500)
+          Serial.println("INFLUX duration longer than expected: " + String(systime_ms() - httpclient_start_ms));
       }
     }
   }

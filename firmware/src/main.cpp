@@ -4,6 +4,7 @@
 #include "WaterControl.hpp"
 #include "WebInterface.hpp"
 #include "Pins.hpp"
+#include "helpers.hpp"
 
 #define CORE_DEBUG_LEVEL 5
 
@@ -14,6 +15,8 @@ WebInterface *web_interface;
 
 void setup()
 {
+  systime_init();
+  
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(Pins::led_green, OUTPUT);
   digitalWrite(Pins::led_green, HIGH);

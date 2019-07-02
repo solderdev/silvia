@@ -3,6 +3,7 @@
 #include "SSR.hpp"
 #include "SSRPump.hpp"
 #include "PIDHeater.hpp"
+#include "helpers.hpp"
 
 Shot::Shot(WaterControl *water_control) :
   water_control_(water_control),
@@ -15,8 +16,8 @@ Shot::Shot(WaterControl *water_control) :
   current_ramp_percent_(0),
   mux_(portMUX_INITIALIZER_UNLOCKED)
 {
-  start_time_ = millis();
-  stop_time_ = millis();
+  start_time_ = systime_ms();
+  stop_time_ = systime_ms();
 
   // shot timer - start must be called separately
   timer_ = xTimerCreate("tmr_shot", pdMS_TO_TICKS(1), pdFALSE, this, &Shot::timer_cb_wrapper);
@@ -80,7 +81,7 @@ void Shot::timer_cb()
           // go directly to 100% (same as case SHOT_PAUSE)
           state_ = SHOT_100PERCENT;
           portEXIT_CRITICAL(&mux_);
-          start_time_ = millis();
+          start_time_ = systime_ms();
           stop_time_ = 0;
           water_control_->pump_->setPWM(100);
         }
@@ -97,7 +98,7 @@ void Shot::timer_cb()
       // pause done - continue with 100%
       state_ = SHOT_100PERCENT;
       portEXIT_CRITICAL(&mux_);
-      start_time_ = millis();
+      start_time_ = systime_ms();
       stop_time_ = 0;
       water_control_->pump_->setPWM(100);
       break;
@@ -135,7 +136,7 @@ void Shot::start(uint32_t init_fill_ms, uint32_t time_ramp_ms, uint32_t time_pau
     pump_start_percent_ = pump_start_percent;
     pump_stop_percent_ = pump_stop_percent;
     
-    start_time_ = millis();
+    start_time_ = systime_ms();
     state_ = SHOT_INIT_FILL;
     water_control_->valve_->on();
     water_control_->pump_->setPWM(100);
@@ -156,14 +157,14 @@ void Shot::stop(uint8_t pump_percent, bool valve)
     else
       water_control_->valve_->off();
     water_control_->pump_->setPWM(pump_percent);
-    stop_time_ = millis();
+    stop_time_ = systime_ms();
   }
 }
 
 uint32_t Shot::getShotTime()
 {
   if (stop_time_ == 0)
-    return millis() - start_time_;
+    return systime_ms() - start_time_;
   else if (stop_time_ < start_time_)
   {
     Serial.println("Shot ERROR: start and stop time wrong");

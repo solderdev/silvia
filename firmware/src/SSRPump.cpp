@@ -1,4 +1,5 @@
 #include "SSRPump.hpp"
+#include "helpers.hpp"
 
 static void timer_callback(void);
 
@@ -36,7 +37,7 @@ void SSRPump::setPWM(uint8_t percent)
   
   if (percent < 5)
   {
-    if (pwm_percent_ != PWM_0_PERCENT && millis() - time_on_ > 3000)
+    if (pwm_percent_ != PWM_0_PERCENT && systime_ms() - time_on_ > 3000)
     {
       // if (SHOT_getState() != SHOT_PAUSE)
       //   PID_override(0.0f, PID_OVERRIDE_CNT);
@@ -46,7 +47,7 @@ void SSRPump::setPWM(uint8_t percent)
   else
   {
     if (pwm_percent_ == PWM_0_PERCENT)
-      time_on_ = millis();
+      time_on_ = systime_ms();
       
     if (percent < 15)
       pwm_percent_ = PWM_10_PERCENT;

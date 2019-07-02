@@ -4,6 +4,7 @@
 #include "Button.hpp"
 #include "Pins.hpp"
 #include "coffee_config.hpp"
+#include "helpers.hpp"
 
 static HWInterface *instance = nullptr;
 
@@ -53,7 +54,7 @@ void HWInterface::service()
     power_trigger_available_ = 1;
 
   // auto power-down
-  if (power_state_ != 0 && (unsigned long)(power_state_ + POWEROFF_MINUTES * 60u * 1000u) < millis())
+  if (power_state_ != 0 && (unsigned long)(power_state_ + POWEROFF_MINUTES * 60u * 1000u) < systime_ms())
   {
     // on for more than 50 min
     Serial.print("AUTO ");
@@ -75,7 +76,7 @@ void HWInterface::service()
   
     if (sw_coffee->active())
     {
-      power_state_ = millis();  // re-set power-off timer
+      power_state_ = systime_ms();  // re-set power-off timer
       
       // coffee switch on and ready to brew
       if (sw_water->active() == false && sw_steam->active() == false)
@@ -113,7 +114,7 @@ void HWInterface::service()
       }
       else if (sw_water->active() && sw_steam->active() == false)
       {
-        power_state_ = millis();  // re-set power-off timer
+        power_state_ = systime_ms();  // re-set power-off timer
         water_control_->startPump(50, false);
       }
       else if (sw_water->active() && sw_steam->active())
@@ -142,7 +143,7 @@ void HWInterface::powerOff()
 void HWInterface::powerOn()
 {
   Serial.println("powering UP!");
-  power_state_ = millis();
+  power_state_ = systime_ms();
   water_control_->enable();
   digitalWrite(Pins::led_green, HIGH);
 }

@@ -7,6 +7,7 @@
 #include "TaskConfig.hpp"
 #include "Sensors.hpp"
 #include "WebInterface.hpp"
+#include "helpers.hpp"
 
 PIDHeater::PIDHeater(WaterControl *water_control, float p_pos, float p_neg, float i, float d, uint32_t ts_ms) :
   water_control_(water_control),
@@ -114,7 +115,7 @@ void PIDHeater::task()
     {
       if (enabled_ == true)
       {
-        // Serial.println("PID running at " + String(millis()));
+        // Serial.println("PID running at " + String(systime_ms()));
         if (mode_ == PID_MODE_WATER)
         {
           float top = SensorsHandler::getInstance()->getTempBoilerTop();
@@ -216,7 +217,7 @@ void PIDHeater::task()
                        
       WebInterface::updateInfluxDB();
 
-      // Serial.println(String(millis()) + " , " + 
+      // Serial.println(String(systime_ms()) + " , " + 
       //                 String(target_) + " , " + 
       //                 String(SensorsHandler::getTempBoilerSide()) + " , " + 
       //                 String(SensorsHandler::getTempBoilerTop()) + " , " + 
