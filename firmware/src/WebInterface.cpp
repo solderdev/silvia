@@ -100,7 +100,7 @@ static String processor_static(const String& var)
     return String(str);
   }
   else if (var == "TARGETTEMP_BREWHEAD")
-    return String(90);
+    return String(BREWHEAD_TEMP);
   
   return String();
 }

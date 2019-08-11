@@ -15,9 +15,9 @@
 
 
 // temperatures
-#define BREW_TEMP     98.0f   // deg-C
-#define STEAM_TEMP    115.0f  // deg-C
-
+#define BREW_TEMP      96.0f   // deg-C
+#define STEAM_TEMP     115.0f  // deg-C
+#define BREWHEAD_TEMP  85      // deg-C
 
 // PID config
 #define PID_P_POS     32
