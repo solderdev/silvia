@@ -78,6 +78,7 @@ void Preheat::start(uint32_t time_pump_ms, uint32_t time_stop_pump_ms, uint32_t 
       time_pause_ms < 4000 || time_pause_ms > 50000)
     return;
 
+  portENTER_CRITICAL(&mux_);
   if (state_ == PREHEAT_OFF)
   {
     Serial.println("Preheat: starting");
@@ -87,21 +88,32 @@ void Preheat::start(uint32_t time_pump_ms, uint32_t time_stop_pump_ms, uint32_t 
     
     // call timer-cb once to start loop
     state_ = PREHEAT_100PERCENT;
+    portEXIT_CRITICAL(&mux_);
     timer_cb();
+  }
+  else
+  {
+    portEXIT_CRITICAL(&mux_);
   }
 }
 
 void Preheat::stop(uint8_t pump_percent, bool valve)
 {
+  portENTER_CRITICAL(&mux_);
   if (state_ != PREHEAT_OFF)
   {
     Serial.println("Preheat: stopping");
     xTimerStop(timer_, portMAX_DELAY);
     state_ = PREHEAT_OFF;
+    portEXIT_CRITICAL(&mux_);
     if (valve)
       water_control_->valve_->on();
     else
       water_control_->valve_->off();
     water_control_->pump_->setPWM(pump_percent);
+  }
+  else
+  {
+    portEXIT_CRITICAL(&mux_);
   }
 }

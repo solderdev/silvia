@@ -125,8 +125,11 @@ void Shot::start(uint32_t init_fill_ms, uint32_t time_ramp_ms, uint32_t time_pau
   if (init_fill_ms == 0 || init_fill_ms > 5000 ||
       time_ramp_ms > 10000 || time_pause_ms > 10000 ||
       pump_start_percent > 100 || pump_stop_percent > 100 || pump_start_percent > pump_stop_percent)
+  {
     return;
-    
+  }
+  
+  portENTER_CRITICAL(&mux_);
   if (state_ == SHOT_OFF)
   {
     Serial.println("Shot: starting");
@@ -138,26 +141,37 @@ void Shot::start(uint32_t init_fill_ms, uint32_t time_ramp_ms, uint32_t time_pau
     
     start_time_ = 0;
     state_ = SHOT_INIT_FILL;
+    portEXIT_CRITICAL(&mux_);
     water_control_->valve_->on();
     water_control_->pump_->setPWM(100);
     // 100% pump for time_init_fill seconds
     xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_init_fill_ms_), portMAX_DELAY);
   }
+  else
+  {
+    portEXIT_CRITICAL(&mux_);
+  }
 }
 
 void Shot::stop(uint8_t pump_percent, bool valve)
 {
+  portENTER_CRITICAL(&mux_);
   if (state_ != SHOT_OFF)
   {
     Serial.println("Shot: stopping");
     xTimerStop(timer_, portMAX_DELAY);
     state_ = SHOT_OFF;
+    portEXIT_CRITICAL(&mux_);
     if (valve)
       water_control_->valve_->on();
     else
       water_control_->valve_->off();
     water_control_->pump_->setPWM(pump_percent);
     stop_time_ = systime_ms();
+  }
+  else
+  {
+    portEXIT_CRITICAL(&mux_);
   }
 }
 
