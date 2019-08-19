@@ -26,10 +26,13 @@
 #define PID_D         -20
 #define PID_TS        1000  // ms
 
-#define PID_MIN_OUTPUT  10  // if 0 < output <= MIN_OUTPUT --> immediately apply MIN_OUTPUT
+#define PID_MIN_OUTPUT  10  // if 0 < output <= MIN_OUTPUT --> apply MIN_OUTPUT
 
 #define PID_OVERRIDE_STARTSHOT  100.0f
 #define PID_OVERRIDE_COUNT      3
+
+#define PID_OVERRIDE_TEMP       100.0f
+#define PID_OVERRIDE_TEMP_ERR   10
 
 
 // hardware config

@@ -130,13 +130,6 @@ void PIDHeater::task()
           pv = SensorsHandler::getInstance()->getTempBoilerMax();
           
         e = target_ - pv;
-
-        // from Wikipedia (same as type A)
-        // float e1 = target_ - pid_pv1;  // for type A and B
-        // float e2 = target_ - pid_pv2;
-        // p_share_ = kP * (e - e1);
-        // i_share_ = kI * ((float)(ts_)/1000.0f) * e;
-        // d_share_ = (kD * (e - 2*e1 + e2)) / ((float)(ts_)/1000.0f);
         
         // PID type C
         // always use less defensive P+ value in steam mode
@@ -151,21 +144,17 @@ void PIDHeater::task()
         // keep calculated u_ value separate from modifications for data-logging
         u_limited = u_;
      
-#if 1   // modifications/overrides to default PID
-        // faster heat-up, if far too cold (10*C)
-        if (e > 10)
-          u_limited = 100;
+        // modifications/overrides to default PID
+
+        // faster heat-up, if far too cold
+        if (e > PID_OVERRIDE_TEMP_ERR)
+          u_limited = PID_OVERRIDE_TEMP;
 
         if (water_control_->pump_->getPWM() == PWM_0_PERCENT)
         {
           // limit heater, if pump is off and we are hotter than SP
           if (u_limited > 5 && pv >= target_ + 0.5)
             u_limited = 5;
-        }
-        else if (water_control_->pump_->getPWM() == PWM_100_PERCENT && u_limited < 20 && e > 0)
-        {
-          // set a minimum of 20% heater during a shot, when temp is too low
-          // u_limited = 20;
         }
 
         // apply override value if activated
@@ -174,7 +163,6 @@ void PIDHeater::task()
           u_limited = u_override_;
           u_override_cnt_--;
         }
-#endif
 
         // anti-windup and safety
         if (u_limited < 0)
@@ -195,6 +183,8 @@ void PIDHeater::task()
           else
             heater_->setPWM(set_value);
         }
+        else
+          heater_->setPWM(0);
     
         // thermostat simulation
         // if (pv < target_temp)
