@@ -4,175 +4,175 @@
 #include "SSRPump.hpp"
 #include "PIDHeater.hpp"
 #include "helpers.hpp"
+#include "TaskConfig.hpp"
 
 Shot::Shot(WaterControl *water_control) :
   water_control_(water_control),
-  state_(SHOT_OFF),
   time_init_fill_ms_(0),
   time_ramp_ms_(0),
   time_pause_ms_(0),
   pump_start_percent_(0),
   pump_stop_percent_(0),
   current_ramp_percent_(0),
-  mux_(portMUX_INITIALIZER_UNLOCKED)
+  active_(false)
 {
   start_time_ = systime_ms();
   stop_time_ = start_time_;
 
-  // shot timer - start must be called separately
-  timer_ = xTimerCreate("tmr_shot", pdMS_TO_TICKS(1), pdFALSE, this, &Shot::timer_cb_wrapper);
-  if (timer_ == NULL)
+  cmd_queue_ = xQueueCreate(cmd_queue_size_, cmd_queue_item_size_);
+
+  // crete timer for delayed execution of commands
+  timer_infos_.cmd = CMD_STOP;
+  timer_infos_.shot = this;
+  timer_ = xTimerCreate("tmr_shot", pdMS_TO_TICKS(1), pdFALSE, &timer_infos_, &Shot::timer_cb_wrapper);
+
+  BaseType_t rval = xTaskCreate(&Shot::task_wrapper, "task_shot", TaskConfig::Shot_stacksize, this, TaskConfig::Shot_priority, &task_handle_);
+
+  if (timer_ == NULL || cmd_queue_ == NULL || rval != pdPASS )
   {
-    Serial.println("Shot ERROR timer init failed");
+    Serial.println("Shot ERROR init failed");
     return; // error
+  }
+}
+void Shot::task_wrapper(void *arg)
+{
+  static_cast<Shot *>(arg)->task();
+}
+void Shot::task()
+{
+  uint32_t command;
+
+  while (1)
+  {
+    if (xQueueReceive(cmd_queue_, &command, portMAX_DELAY))
+    {
+      // start: enable valve
+      // ramp up pump from pump_percent_start to 100% in time_ramp seconds
+      //   increment_duration = time_ramp_ms / ((pump_stop_percent - pump_start_percent)/10)
+      //   
+      // continue with 100% until stop
+      switch (command)
+      {
+        case CMD_STOP:
+          stop_time_ = systime_ms();
+          break;
+
+        case CMD_START:
+          start_time_ = 0;
+          water_control_->valve_->on();
+          water_control_->pump_->setPWM(100);
+          current_ramp_percent_ = pump_start_percent_;
+          // 100% pump for time_init_fill_ms_
+          xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_init_fill_ms_), portMAX_DELAY);
+          timer_infos_.cmd = CMD_RAMP;
+          break;
+
+        case CMD_RAMP:
+          if (!active_)
+            break;
+          // check if we are done with ramp
+          if (current_ramp_percent_ > pump_stop_percent_)
+          {
+            // ramp finished
+            uint32_t cmd = CMD_PAUSE;
+            xQueueSendToBack(cmd_queue_, &cmd, portMAX_DELAY);
+            break;
+          }
+          water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
+          water_control_->pump_->setPWM(current_ramp_percent_);
+          current_ramp_percent_ += 10;
+          
+          xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_ramp_ms_ / ((pump_stop_percent_ - pump_start_percent_)/10)), portMAX_DELAY);
+          timer_infos_.cmd = CMD_RAMP;
+          break;
+
+        case CMD_PAUSE:
+          if (!active_)
+            break;
+          // pause or 100%
+          if (time_pause_ms_ > 0)
+          {
+            water_control_->pump_->setPWM(0);
+            xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_pause_ms_), portMAX_DELAY);
+            timer_infos_.cmd = CMD_100PERCENT;
+          }
+          else
+          {
+            // go directly to 100%
+            uint32_t cmd = CMD_100PERCENT;
+            xQueueSendToBack(cmd_queue_, &cmd, portMAX_DELAY);
+          }
+          break;
+
+        case CMD_100PERCENT:
+          if (!active_)
+            break;
+          stop_time_ = 0;
+          start_time_ = systime_ms();
+          water_control_->pump_->setPWM(100);
+          break;
+        
+        default:
+          Serial.println("Shot ERROR command unkown");
+          break;
+      }
+    }
   }
 }
 
 void Shot::timer_cb_wrapper(TimerHandle_t arg)
 {
-  static_cast<Shot *>(pvTimerGetTimerID(arg))->timer_cb();
+  TimerInfos_t *timer_infos = static_cast<TimerInfos_t *>(pvTimerGetTimerID(arg));
+  timer_infos->shot->timer_cb(timer_infos->cmd);
 }
-
-// start: enable valve
-// ramp up pump from pump_percent_start to 100% in time_ramp seconds
-//   increment_duration = time_ramp_ms / ((pump_stop_percent - pump_start_percent)/10)
-//   
-// continue with 100% until stop()
-void Shot::timer_cb()
+void Shot::timer_cb(uint32_t cmd)
 {
-  //Serial.println("Shot state " + String(state_));
-  
-  portENTER_CRITICAL(&mux_);
-  switch (state_)
-  {
-    case SHOT_OFF:
-      // water_control_->pump_->setPWM(0);
-      // water_control_->valve_->off();
-      // xTimerStop(timer_, 0);
-      portEXIT_CRITICAL(&mux_);
-      Serial.println("Shot ERROR timer called in off state");
-      break;
-      
-    case SHOT_INIT_FILL:
-      // init fill is finished: go to ramp
-      state_ = SHOT_RAMP;
-      portEXIT_CRITICAL(&mux_);
-      current_ramp_percent_ = pump_start_percent_;
-      water_control_->pump_->setPWM(current_ramp_percent_);
-      xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_ramp_ms_ / ((pump_stop_percent_ - pump_start_percent_)/10)), 0);
-      break;
-      
-    case SHOT_RAMP:
-      current_ramp_percent_ += 10;
-      water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
-      if (current_ramp_percent_ > pump_stop_percent_)
-      {
-        // ramp finished - continue with pause or 100%
-        current_ramp_percent_ = 0;
-        if (time_pause_ms_ > 0)
-        {
-          state_ = SHOT_PAUSE;
-          portEXIT_CRITICAL(&mux_);
-          water_control_->pump_->setPWM(0);
-          xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_pause_ms_), 0);
-        }
-        else
-        {
-          // go directly to 100% (same as case SHOT_PAUSE)
-          state_ = SHOT_100PERCENT;
-          portEXIT_CRITICAL(&mux_);
-          stop_time_ = 0;
-          start_time_ = systime_ms();
-          water_control_->pump_->setPWM(100);
-        }
-        break;
-      }
-      else
-        portEXIT_CRITICAL(&mux_);
-      // continue with new ramp value
-      water_control_->pump_->setPWM(current_ramp_percent_);
-      xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_ramp_ms_ / ((pump_stop_percent_ - pump_start_percent_)/10)), 0);
-      break;
-      
-    case SHOT_PAUSE:
-      // pause done - continue with 100%
-      state_ = SHOT_100PERCENT;
-      portEXIT_CRITICAL(&mux_);
-      stop_time_ = 0;
-      start_time_ = systime_ms();
-      water_control_->pump_->setPWM(100);
-      break;
-      
-    case SHOT_100PERCENT:
-      portEXIT_CRITICAL(&mux_);
-      break;
-
-    case SHOT_MANUAL:
-      portEXIT_CRITICAL(&mux_);
-      // TODO - unused?
-      break;
-      
-    default:
-      portEXIT_CRITICAL(&mux_);
-      Serial.println("Shot ERROR state");
-      break;
-  }
+  if (xQueueSendToBack(cmd_queue_, &cmd, 0) != pdPASS )
+    Serial.println("Shot ERROR timed cb queue send");
 }
 
 void Shot::start(uint32_t init_fill_ms, uint32_t time_ramp_ms, uint32_t time_pause_ms, 
                          uint8_t pump_start_percent, uint8_t pump_stop_percent)
 {
-  if (init_fill_ms == 0 || init_fill_ms > 5000 ||
+  if (active_ ||
+      init_fill_ms == 0 || init_fill_ms > 5000 ||
       time_ramp_ms > 10000 || time_pause_ms > 10000 ||
       pump_start_percent > 100 || pump_stop_percent > 100 || pump_start_percent > pump_stop_percent)
   {
+    Serial.println("Shot start: invalid parameters");
     return;
   }
+  Serial.println("Shot: starting");
+  xTimerStop(timer_, portMAX_DELAY);
+  active_ = true;
   
-  portENTER_CRITICAL(&mux_);
-  if (state_ == SHOT_OFF)
-  {
-    Serial.println("Shot: starting");
-    time_init_fill_ms_ = init_fill_ms;
-    time_ramp_ms_ = time_ramp_ms;
-    time_pause_ms_ = time_pause_ms;
-    pump_start_percent_ = pump_start_percent;
-    pump_stop_percent_ = pump_stop_percent;
-    
-    start_time_ = 0;
-    state_ = SHOT_INIT_FILL;
-    portEXIT_CRITICAL(&mux_);
-    water_control_->valve_->on();
-    water_control_->pump_->setPWM(100);
-    // 100% pump for time_init_fill seconds
-    xTimerChangePeriod(timer_, pdMS_TO_TICKS(time_init_fill_ms_), portMAX_DELAY);
-  }
-  else
-  {
-    portEXIT_CRITICAL(&mux_);
-  }
+  time_init_fill_ms_ = init_fill_ms;
+  time_ramp_ms_ = time_ramp_ms;
+  time_pause_ms_ = time_pause_ms;
+  pump_start_percent_ = pump_start_percent;
+  pump_stop_percent_ = pump_stop_percent;
+  
+  uint32_t cmd = CMD_START;
+  xQueueSendToBack(cmd_queue_, &cmd, portMAX_DELAY);
 }
 
 void Shot::stop(uint8_t pump_percent, bool valve)
 {
-  portENTER_CRITICAL(&mux_);
-  if (state_ != SHOT_OFF)
-  {
-    Serial.println("Shot: stopping");
-    xTimerStop(timer_, portMAX_DELAY);
-    state_ = SHOT_OFF;
-    portEXIT_CRITICAL(&mux_);
-    if (valve)
-      water_control_->valve_->on();
-    else
-      water_control_->valve_->off();
-    water_control_->pump_->setPWM(pump_percent);
-    stop_time_ = systime_ms();
-  }
+  if (!active_)
+    return;
+
+  Serial.println("Shot: stopping");
+  active_ = false;
+  xTimerStop(timer_, portMAX_DELAY);
+
+  uint32_t cmd = CMD_STOP;
+  xQueueSendToBack(cmd_queue_, &cmd, portMAX_DELAY);
+  
+  if (valve)
+    water_control_->valve_->on();
   else
-  {
-    portEXIT_CRITICAL(&mux_);
-  }
+    water_control_->valve_->off();
+  water_control_->pump_->setPWM(pump_percent);
 }
 
 uint32_t Shot::getShotTime()

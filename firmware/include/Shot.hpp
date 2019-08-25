@@ -4,17 +4,6 @@
 
 class WaterControl;
 
-
-typedef enum {
-  SHOT_OFF = 0,
-  SHOT_INIT_FILL,
-  SHOT_RAMP,
-  SHOT_PAUSE,
-  SHOT_100PERCENT,
-  SHOT_MANUAL
-} SHOT_State_t;
-
-
 class Shot
 {
 public:
@@ -25,7 +14,6 @@ public:
 
 private:
   WaterControl *water_control_;
-  SHOT_State_t state_;
   TimerHandle_t timer_;
   
   uint32_t time_init_fill_ms_;  // ms - initial 100% pump duration
@@ -38,7 +26,32 @@ private:
   uint32_t start_time_;         // time-ms - start of current shot
   uint32_t stop_time_;          // time-ms - stop of current shot
 
-  portMUX_TYPE mux_;
-  void timer_cb();
+  bool active_;                 // shot is currently active
+
+  // commands for task to process
+  enum SHOT_CMD {
+    CMD_STOP = 0,
+    CMD_START,
+    CMD_RAMP,
+    CMD_PAUSE,
+    CMD_100PERCENT,
+  };
+  // queue sending commands to task
+  static constexpr uint8_t cmd_queue_size_ = 5;
+  static constexpr uint8_t cmd_queue_item_size_ = sizeof(uint32_t);
+  QueueHandle_t cmd_queue_;
+
+  static void task_wrapper(void *arg);
+  void task();
+  TaskHandle_t task_handle_;
+
+  // current timer infos tell which command needs to be executed next by timer
+  typedef struct TimerInfos {
+    Shot *shot;
+    uint32_t cmd;
+  } TimerInfos_t;
+  TimerInfos_t timer_infos_;
+
+  void timer_cb(uint32_t cmd);
   static void timer_cb_wrapper(TimerHandle_t arg);
 };
