@@ -1,13 +1,12 @@
 #pragma once
 
 // timing
-#define SHOT_T_INITWATER  300  // ms
-#define SHOT_T_RAMP       3000  // ms
-#define SHOT_T_PAUSE      4000  // ms
-#define SHOT_T_INITWATER  300  // ms
+#define SHOT_T_INITWATER  100  // ms
+#define SHOT_T_RAMP       8000  // ms
+#define SHOT_T_PAUSE      0  // ms
 
 #define SHOT_RAMP_MIN  10  // %
-#define SHOT_RAMP_MAX  30  // %
+#define SHOT_RAMP_MAX  100  // %
 
 #define PREHEAT_T_WATER  1000  // ms
 #define PREHEAT_T_FILL   800  // ms

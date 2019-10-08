@@ -71,14 +71,18 @@ void Shot::task()
           if (!active_)
             break;
           // check if we are done with ramp
-          if (current_ramp_percent_ > pump_stop_percent_)
+          if (current_ramp_percent_ > pump_stop_percent_ || current_ramp_percent_ >= 100)
           {
             // ramp finished
             uint32_t cmd = CMD_PAUSE;
             xQueueSendToBack(cmd_queue_, &cmd, portMAX_DELAY);
             break;
           }
-          water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
+          
+          // engage PID override in second stage of ramp, so it's not triggered by a short flip of the switch
+          if (current_ramp_percent_ > pump_start_percent_)
+            water_control_->pid_boiler_->overrideOutput(PID_OVERRIDE_STARTSHOT, PID_OVERRIDE_COUNT);
+            
           water_control_->pump_->setPWM(current_ramp_percent_);
           current_ramp_percent_ += 10;
           
