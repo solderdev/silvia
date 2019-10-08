@@ -30,7 +30,7 @@ public:
   void startShot();
   uint32_t getShotTime();
   void startPreheat();
-  void startSteam(uint8_t pump_percent = 0);
+  void startSteam(uint8_t pump_percent = 0, bool new_state_valve = false);
   void stop(uint8_t new_pump_percent = 0, bool new_state_valve = false, WATERCTRL_State_t new_state = WATERCTRL_OFF);
   PIDHeater *getBoilerPID() {return pid_boiler_;};
 

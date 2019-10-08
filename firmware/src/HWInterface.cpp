@@ -119,7 +119,7 @@ void HWInterface::service()
       }
       else if (sw_water->active() && sw_steam->active())
       {
-        water_control_->startSteam(50);
+        water_control_->startSteam(0, true);
       }
       else
         Serial.println("ERROR: Button state not reachable (coffee off)!");

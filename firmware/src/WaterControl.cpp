@@ -93,12 +93,16 @@ void WaterControl::startPreheat()
   preheat_->start(PREHEAT_T_WATER, PREHEAT_T_FILL, PREHEAT_T_PAUSE);  // ms 100% pump , ms build pressure, ms pause)
 }
 
-void WaterControl::startSteam(uint8_t pump_percent)
+void WaterControl::startSteam(uint8_t pump_percent, bool new_state_valve)
 {
   if (state_ != WATERCTRL_STEAM)
     stop(0, false, WATERCTRL_STEAM);
 
   pump_->setPWM(pump_percent);
+  if (new_state_valve)
+    valve_->on();
+  else
+    valve_->off();
 
   pid_boiler_->setTarget(STEAM_TEMP, PID_MODE_STEAM);
 }
