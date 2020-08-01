@@ -56,6 +56,11 @@
         request.open("POST", "/reset", true);
         request.send(null);
       };
+      function waterfillButtonFunction() {
+        var request = new XMLHttpRequest();
+        request.open("POST", "/waterfill", true);
+        request.send(null);
+      };
       document.addEventListener('DOMContentLoaded', function() {
         GetReadings();
       }, false);
@@ -97,6 +102,7 @@
     </table>
     <button onclick="powerOnButtonFunction()">Power On</button>
     <button onclick="powerOffButtonFunction()">Power Off</button>
+    <button onclick="waterfillButtonFunction()">Fill</button>
     <button onclick="resetButtonFunction()">Reset</button>
   </body>
 </html>

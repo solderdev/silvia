@@ -27,6 +27,8 @@ public:
   void enable();
   void disable();
   void startPump(uint8_t percent, bool valve);
+  void overridePump(uint8_t percent, uint16_t time_ms);
+  void overridePumpCheck(void);
   void startShot();
   uint32_t getShotTime();
   void startPreheat();
@@ -45,4 +47,7 @@ private:
   PIDHeater *pid_boiler_;
 
   WATERCTRL_State_t state_;
+  uint8_t pump_override_percent_;  // override pump with this value if positive
+  uint16_t pump_override_total_ms_;  // for how many milli-secs the override should be in place
+  uint16_t pump_override_active_ms_;  // for how long the override is already active
 };

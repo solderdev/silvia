@@ -73,28 +73,40 @@ void HWInterface::service()
     //    1      0      1    valve open, pump x% (filter-coffee)
     //    1      1      0    valve open, pump 100%
     //    1      1      1    start preheat
+
+    bool sw_coffee_active = sw_coffee->active();
+    bool sw_water_active = sw_water->active();
+    bool sw_steam_active = sw_steam->active();
+
+    if (sw_coffee_active || sw_water_active || sw_steam_active)
+    {
+      // disable pump override when any button is pressed
+      water_control_->overridePump(0, 0);
+      water_control_->stop();
+    }
+    water_control_->overridePumpCheck();
   
-    if (sw_coffee->active())
+    if (sw_coffee_active)
     {
       power_state_ = systime_ms();  // re-set power-off timer
       
       // coffee switch on and ready to brew
-      if (sw_water->active() == false && sw_steam->active() == false)
+      if (sw_water_active == false && sw_steam_active == false)
       {
         water_control_->startShot();
       }
-      else if (sw_water->active() == false && sw_steam->active())
+      else if (sw_water_active == false && sw_steam_active)
       {
   //       // filter-coffee mode
   // TODO - timer      SHOT_manuallyStartShot();
         water_control_->startPump(20, true);
       }
-      else if (sw_water->active() && sw_steam->active() == false)
+      else if (sw_water_active && sw_steam_active == false)
       {
         // water flush mode
         water_control_->startPump(100, true);
       }
-      else if (sw_water->active() && sw_steam->active())
+      else if (sw_water_active && sw_steam_active)
       {
         water_control_->startPreheat();
       }
@@ -104,20 +116,20 @@ void HWInterface::service()
     else
     {
       // coffee switch off:
-      if (sw_water->active() == false && sw_steam->active() == false)
+      if (sw_water_active == false && sw_steam_active == false)
       {
         water_control_->stop();
       }
-      else if (sw_water->active() == false && sw_steam->active())
+      else if (sw_water_active == false && sw_steam_active)
       {
         water_control_->startSteam();
       }
-      else if (sw_water->active() && sw_steam->active() == false)
+      else if (sw_water_active && sw_steam_active == false)
       {
         power_state_ = systime_ms();  // re-set power-off timer
         water_control_->startPump(50, false);
       }
-      else if (sw_water->active() && sw_steam->active())
+      else if (sw_water_active && sw_steam_active)
       {
         water_control_->startSteam(0, true);
       }

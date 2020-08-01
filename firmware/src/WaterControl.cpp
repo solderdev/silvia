@@ -10,13 +10,17 @@
 #include "Preheat.hpp"
 #include "PIDHeater.hpp"
 #include "coffee_config.hpp"
+#include "helpers.hpp"
 
 
 static WaterControl *instance = nullptr;
 
 
 WaterControl::WaterControl() :
-  state_(WATERCTRL_OFF)
+  state_(WATERCTRL_OFF),
+  pump_override_percent_(0),
+  pump_override_total_ms_(0),
+  pump_override_active_ms_(0)
 {
   if (instance)
   {
@@ -65,6 +69,25 @@ void WaterControl::startPump(uint8_t percent, bool valve)
     stop(percent, valve, WATERCTRL_WATER);
 }
 
+void WaterControl::overridePump(uint8_t percent, uint16_t time_ms)
+{
+  pump_override_percent_ = percent,
+  pump_override_total_ms_ = time_ms;
+  pump_override_active_ms_ = 0;
+}
+
+void WaterControl::overridePumpCheck(void)
+{
+  static unsigned long time_last_check = 0;
+
+  unsigned long now = systime_ms();
+
+  if (pump_override_total_ms_ > 0)
+    pump_override_active_ms_ += now - time_last_check;
+
+  time_last_check = now;
+}
+
 void WaterControl::startShot()
 {
   if (state_ == WATERCTRL_SHOT)
@@ -110,11 +133,20 @@ void WaterControl::startSteam(uint8_t pump_percent, bool new_state_valve)
 void WaterControl::stop(uint8_t new_pump_percent, bool new_state_valve, WATERCTRL_State_t new_state)
 {
   pid_boiler_->setTarget(BREW_TEMP, PID_MODE_WATER);
-  
-  shot_->stop(new_pump_percent, new_state_valve);
-  preheat_->stop(new_pump_percent, new_state_valve);
 
-  pump_->setPWM(new_pump_percent);
+  if (pump_override_total_ms_ > pump_override_active_ms_)
+  {
+    pump_->setPWM(pump_override_percent_);
+  }
+  else
+  {
+    pump_override_total_ms_ = 0;
+  
+    shot_->stop(new_pump_percent, new_state_valve);
+    preheat_->stop(new_pump_percent, new_state_valve);
+    pump_->setPWM(new_pump_percent);
+  }
+
   if (new_state_valve)
     valve_->on();
   else

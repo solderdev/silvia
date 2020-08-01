@@ -9,13 +9,15 @@
 #define SHOT_RAMP_MAX  100  // %
 
 #define PREHEAT_T_WATER  1000  // ms
-#define PREHEAT_T_FILL   400  // ms
+#define PREHEAT_T_FILL   300  // ms
 #define PREHEAT_T_PAUSE  10000  // ms
+
+#define PUMP_OVERRIDE_MS  800  // ms
 
 
 // temperatures
 #define BREW_TEMP      94.0f   // deg-C
-#define STEAM_TEMP     120.0f  // deg-C
+#define STEAM_TEMP     116.0f  // deg-C
 #define BREWHEAD_TEMP  81      // deg-C
 
 // PID config

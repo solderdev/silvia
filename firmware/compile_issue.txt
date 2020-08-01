@@ -1,0 +1,8 @@
+if these HTTP_*** defines are redefined -->
+
+change line 138 in http_parser.h
+~/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/nghttp/http_parser.h
+
+#define XX(num, name, string) HTTP__##name = num,
+                                   ^
+(add _)
