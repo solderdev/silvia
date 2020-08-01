@@ -82,7 +82,6 @@ void HWInterface::service()
     {
       // disable pump override when any button is pressed
       water_control_->overridePump(0, 0);
-      water_control_->stop();
     }
     water_control_->overridePumpCheck();
   
