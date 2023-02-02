@@ -1,11 +1,11 @@
 #pragma once
 
 // timing
-#define SHOT_T_INITWATER  400  // ms
-#define SHOT_T_RAMP       8000  // ms
+#define SHOT_T_INITWATER  200  // ms
+#define SHOT_T_RAMP       6000  // ms
 #define SHOT_T_PAUSE      0  // ms
 
-#define SHOT_RAMP_MIN  10  // %
+#define SHOT_RAMP_MIN  40  // %
 #define SHOT_RAMP_MAX  100  // %
 
 #define PREHEAT_T_WATER  1000  // ms
@@ -16,9 +16,9 @@
 
 
 // temperatures
-#define BREW_TEMP      94.0f   // deg-C
-#define STEAM_TEMP     116.0f  // deg-C
-#define BREWHEAD_TEMP  81      // deg-C
+#define BREW_TEMP      92.0f   // deg-C
+#define STEAM_TEMP     112.0f  // deg-C
+#define BREWHEAD_TEMP  75      // deg-C
 
 // PID config
 #define PID_P_POS     32
