@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "WebServer.h"  // https://github.com/me-no-dev/ESPAsyncWebServer/issues/418
 #include <ESPAsyncWebServer.h>
 #include <esp_http_client.h>
 
